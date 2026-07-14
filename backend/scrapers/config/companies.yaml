@@ -1,0 +1,49 @@
+# Companies tracked by the ATS adapters.
+#
+# Adding a new company requires NO code changes — just add an entry below
+# and the ATS orchestrator will pick it up on the next scraping cycle.
+#
+# Fields
+#   name:         Display name of the company
+#   platform:     ATS platform — one of greenhouse, lever, ashby, workable
+#   careers_url:  Base URL for the company's public job board or API endpoint
+#   api_key:      Required for Ashby; optional for Workable
+#   locations:    Optional filter — only scrape jobs in these cities (PK only)
+#   skip:         Set to true to pause scraping for this company
+
+companies:
+  - name: Motive
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/motive
+
+  - name: Arbisoft
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/arbisoft
+
+  - name: Confiz
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/confiz
+
+  - name: Devsinc
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/devsinc
+
+  - name: Airbyte
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/airbyte
+
+  - name: Careem
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/careem
+
+  - name: Dubizzle Labs
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/dubizzlelabs
+
+  - name: Retailo
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/retailo
+
+  - name: Systems Ltd
+    platform: workable
+    careers_url: https://apply.workable.com/systems
