@@ -1,15 +1,13 @@
-import logging
-
 from backend.models.company import Company
 from backend.repositories.company import CompanyRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.company")
 
-
-class CompanyService:
+class CompanyService(BaseService):
     """Business logic for company discovery and management."""
 
     def __init__(self, company_repo: CompanyRepository) -> None:
+        super().__init__()
         self._companies = company_repo
 
     async def get_or_create(self, name: str) -> Company:

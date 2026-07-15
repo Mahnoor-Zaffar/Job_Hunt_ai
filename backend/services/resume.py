@@ -1,13 +1,11 @@
-import logging
 import uuid
 
 from backend.models.resume import Resume
 from backend.repositories.resume import ResumeRepository, ResumeVersionRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.resume")
 
-
-class ResumeService:
+class ResumeService(BaseService):
     """Business logic for resume upload, parsing, and version management."""
 
     def __init__(
@@ -15,6 +13,7 @@ class ResumeService:
         resume_repo: ResumeRepository,
         version_repo: ResumeVersionRepository | None = None,
     ) -> None:
+        super().__init__()
         self._resumes = resume_repo
         self._versions = version_repo
 

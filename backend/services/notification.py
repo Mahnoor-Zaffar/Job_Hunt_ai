@@ -1,16 +1,15 @@
-import logging
 import uuid
 
 from backend.models.notification import Notification
 from backend.repositories.notification import NotificationRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.notification")
 
-
-class NotificationService:
+class NotificationService(BaseService):
     """Business logic for creating and managing user notifications."""
 
     def __init__(self, notification_repo: NotificationRepository) -> None:
+        super().__init__()
         self._notifications = notification_repo
 
     async def create(

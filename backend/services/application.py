@@ -1,15 +1,13 @@
-import logging
 import uuid
 from datetime import UTC, datetime
 from typing import ClassVar
 
 from backend.models.application import Application
 from backend.repositories.application import ApplicationRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.application")
 
-
-class ApplicationService:
+class ApplicationService(BaseService):
     """Business logic for job application lifecycle management."""
 
     VALID_STATUSES: ClassVar[frozenset[str]] = frozenset(
@@ -25,6 +23,7 @@ class ApplicationService:
     )
 
     def __init__(self, application_repo: ApplicationRepository) -> None:
+        super().__init__()
         self._applications = application_repo
 
     async def apply(
@@ -61,7 +60,7 @@ class ApplicationService:
 
     async def update_status(self, application_id: uuid.UUID, status: str) -> Application | None:
         if status not in self.VALID_STATUSES:
-            raise ValueError(f"Invalid application status: {status}")
+            self._raise_validation(f"Invalid application status: {status}")
         application = await self._applications.get_by_id(application_id)
         if application is None:
             return None

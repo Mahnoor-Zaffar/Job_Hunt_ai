@@ -1,12 +1,9 @@
-import logging
-
 from backend.models.job import Job
 from backend.repositories.job import JobRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.search")
 
-
-class SearchService:
+class SearchService(BaseService):
     """Business logic for job search with filtering and ranking.
 
     Designed to support future semantic search via pgvector without
@@ -16,6 +13,7 @@ class SearchService:
     """
 
     def __init__(self, job_repo: JobRepository) -> None:
+        super().__init__()
         self._jobs = job_repo
 
     async def search(

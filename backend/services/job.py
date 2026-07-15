@@ -1,14 +1,12 @@
-import logging
 import uuid
 
 from backend.models.job import Job
 from backend.repositories.company import CompanyRepository
 from backend.repositories.job import JobRepository
+from backend.services.base import BaseService
 
-logger = logging.getLogger("job_hunting.services.job")
 
-
-class JobService:
+class JobService(BaseService):
     """Business logic for job discovery, filtering, and status management."""
 
     def __init__(
@@ -16,6 +14,7 @@ class JobService:
         job_repo: JobRepository,
         company_repo: CompanyRepository | None = None,
     ) -> None:
+        super().__init__()
         self._jobs = job_repo
         self._companies = company_repo
 
