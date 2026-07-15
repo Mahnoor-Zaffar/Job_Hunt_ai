@@ -2,7 +2,7 @@
 set -e
 
 echo "Running linter and type checker..."
-ruff check .
-ruff format --check .
-mypy backend/
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy backend/
 echo "All checks passed."

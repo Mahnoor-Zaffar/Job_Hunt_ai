@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.user import User
 from backend.repositories.user import UserRepository
 
+pytestmark = pytest.mark.db
+
 
 @pytest.mark.asyncio
 async def test_user_repository_create(db_session: AsyncSession) -> None:

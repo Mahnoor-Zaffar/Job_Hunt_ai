@@ -2,16 +2,33 @@ import { Card } from "@/components/ui";
 
 async function getJobs() {
   try {
-    return await (
-      await fetch("http://localhost:8000/api/v1/jobs?status=active&per_page=20")
-    ).json();
+    const res = await fetch(
+      "http://localhost:8000/api/v1/jobs?status=active&per_page=20",
+      { next: { revalidate: 30 } },
+    );
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    return { items: [], total: 0 };
+    return null;
   }
 }
 
 export default async function JobsPage() {
   const data = await getJobs();
+
+  if (!data) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-6">Jobs</h1>
+        <Card>
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            Backend API is not available. Start the server at{" "}
+            <code className="bg-muted px-1 rounded">localhost:8000</code>.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -30,11 +47,16 @@ export default async function JobsPage() {
                 </p>
                 {(job.skills as string[])?.length > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
-                    {(job.skills as string[]).slice(0, 6).map((s: string) => (
-                      <span key={s} className="text-xs bg-muted px-2 py-0.5 rounded">
-                        {s}
-                      </span>
-                    ))}
+                    {(job.skills as string[])
+                      .slice(0, 6)
+                      .map((s: string) => (
+                        <span
+                          key={s}
+                          className="text-xs bg-muted px-2 py-0.5 rounded"
+                        >
+                          {s}
+                        </span>
+                      ))}
                   </div>
                 )}
               </div>
@@ -49,6 +71,13 @@ export default async function JobsPage() {
             </div>
           </Card>
         ))}
+        {data.items.length === 0 && (
+          <Card>
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              No jobs yet. Run the scrapers to discover jobs.
+            </p>
+          </Card>
+        )}
       </div>
     </div>
   );
