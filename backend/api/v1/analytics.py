@@ -1,6 +1,6 @@
 """Analytics API — dashboard metrics and reports."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends

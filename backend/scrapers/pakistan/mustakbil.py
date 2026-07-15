@@ -1,29 +1,20 @@
+"""Mustakbil scraper — Angular SPA requiring Playwright for JS rendering."""
+
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urljoin
 
+from selectolax.parser import HTMLParser
+
 from backend.scrapers.base.scraper import BaseScraper
 from backend.scrapers.models.models import RawJob
-from backend.scrapers.parser import parser as parse_utils
 from backend.scrapers.registry.registry import register
 
 logger = logging.getLogger("job_hunting.mustakbil")
 
 BASE_URL = "https://www.mustakbil.com"
-SEARCH_URL = f"{BASE_URL}/jobs"
 SUPPORTED_LOCATIONS = ["Islamabad", "Rawalpindi", "Lahore"]
-
-SELECTOR_JOB_CARD = "div.job-listing, div.listing, article.job"
-SELECTOR_TITLE = "h1, h2, h3, a.job-title, .title a"
-SELECTOR_COMPANY = ".company, .company-name, .employer-name"
-SELECTOR_LOCATION = ".location, .city-name"
-SELECTOR_URL = "a.job-link, a[href*='/job'], .job-title a"
-SELECTOR_DESCRIPTION = ".description, .job-desc"
-SELECTOR_TYPE = ".job-type, .employment-type"
-SELECTOR_EXPERIENCE = ".experience, .career-level"
-SELECTOR_SALARY = ".salary, .salary-range"
-SELECTOR_POSTED = ".posted-date, .date, .posted-on"
 
 
 @register(
@@ -33,29 +24,22 @@ SELECTOR_POSTED = ".posted-date, .date, .posted-on"
     interval=30,
 )
 class MustakbilScraper(BaseScraper):
-    """Scraper for Mustakbil.com — Pakistani job portal.
-
-    Iterates through search results filtered by supported locations.
-    Uses ``httpx`` for HTTP fetching and Selectolax for HTML parsing.
-    """
-
     source = "mustakbil"
-    _MAX_PAGES = 5
 
     async def fetch(self) -> list[str]:
         pages: list[str] = []
         for location in SUPPORTED_LOCATIONS:
-            for page in range(1, self._MAX_PAGES + 1):
-                url = f"{SEARCH_URL}?search=software&location={location}&page={page}"
-                try:
-                    html = await self.http.get(url)
-                    pages.append(html)
-                    logger.debug("Fetched %s page %d", location, page)
-                except Exception:
-                    logger.exception("Failed %s page %d", location, page)
-                    if page == 1:
-                        raise
-                    break
+            url = f"{BASE_URL}/jobs?search=software&location={location}"
+            try:
+                page = await self.get_page()
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_selector("a.job-card__title", timeout=15000)
+                await page.wait_for_timeout(2000)
+                content = await page.content()
+                pages.append(content)
+                logger.debug("Fetched %s from Mustakbil", location)
+            except Exception:
+                logger.exception("Failed to fetch Mustakbil %s", location)
         return pages
 
     async def parse(self, raw: Any) -> list[RawJob]:
@@ -63,58 +47,118 @@ class MustakbilScraper(BaseScraper):
         jobs: list[RawJob] = []
 
         for page_html in pages:
-            tree = parse_utils.from_html(page_html)
-            cards = tree.css(SELECTOR_JOB_CARD)
-            logger.debug("Parsing %d job cards", len(cards))
+            tree = HTMLParser(page_html)
 
-            for card in cards:
-                card_html = card.html
-                if card_html is None:
+            for card in tree.css("div.job-card"):
+                try:
+                    raw_job = self._parse_card(card)
+                    if raw_job:
+                        jobs.append(raw_job)
+                except Exception:
                     continue
-                card_parser = parse_utils.from_html(card_html)
-                raw_job = self._parse_card(card_parser)
-                if raw_job:
-                    jobs.append(raw_job)
+
+            if not jobs:
+                for link in tree.css("a.job-card__title"):
+                    try:
+                        raw_job = self._parse_from_title_link(link, tree)
+                        if raw_job:
+                            jobs.append(raw_job)
+                    except Exception:
+                        continue
 
         return jobs
 
-    def _parse_card(self, tree: Any) -> RawJob | None:
-        title = parse_utils.text(tree, SELECTOR_TITLE)
+    def _parse_card(self, card: Any) -> RawJob | None:
+        title_el = card.css_first("a.job-card__title")
+        if title_el is None:
+            return None
+
+        title = (title_el.text(strip=True) or "").strip()
         if not title:
             return None
 
-        company = parse_utils.text(tree, SELECTOR_COMPANY) or ""
-        location = parse_utils.text(tree, SELECTOR_LOCATION) or ""
-        url = parse_utils.attr(tree, SELECTOR_URL, "href") or ""
-        full_url = urljoin(BASE_URL, url) if url else ""
+        href = title_el.attributes.get("href", "")
+        full_url = urljoin(BASE_URL, href) if href else ""
 
-        source_id = f"mb-{_id_from_url(full_url) if full_url else 'unknown'}"
+        company_el = card.css_first(".job-card__company")
+        company = (company_el.text(strip=True) or "") if company_el else ""
+        if not company:
+            title_attr = title_el.attributes.get("title", "")
+            if " at " in title_attr:
+                company = title_attr.split(" at ", 1)[1].strip()
+
+        loc_el = card.css_first(".job-card__location")
+        location = (loc_el.text(strip=True) or "") if loc_el else ""
+
+        time_el = card.css_first(".job-card__time")
+        posted_text = (time_el.text(strip=True) or "") if time_el else ""
+
+        source_id = _make_source_id(full_url, title)
 
         return RawJob(
             title=title,
-            company=company,
+            company=company or "Unknown",
             location=location,
-            description=parse_utils.text(tree, SELECTOR_DESCRIPTION),
             url=full_url or f"{BASE_URL}/job",
             apply_url=full_url or None,
             source=self.source,
             source_id=source_id,
-            employment_type=parse_utils.text(tree, SELECTOR_TYPE),
-            experience_level=parse_utils.text(tree, SELECTOR_EXPERIENCE),
-            posted_at=datetime.now(UTC),
-            is_remote="remote" in (location or "").lower(),
-            salary_min=None,
-            salary_max=None,
-            currency=None,
-            skills=None,
-            requirements=None,
+            posted_at=_parse_date(posted_text),
+            is_remote="remote" in location.lower(),
+        )
+
+    def _parse_from_title_link(self, link: Any, tree: Any) -> RawJob | None:
+        title = (link.text(strip=True) or "").strip()
+        if not title:
+            return None
+
+        href = link.attributes.get("href", "")
+        full_url = urljoin(BASE_URL, href) if href else ""
+
+        title_attr = link.attributes.get("title", "")
+        company = ""
+        if " at " in title_attr:
+            company = title_attr.split(" at ", 1)[1].strip()
+
+        loc_el = tree.css_first(".job-card__location")
+        location = (loc_el.text(strip=True) or "") if loc_el else ""
+
+        return RawJob(
+            title=title,
+            company=company or "Unknown",
+            location=location,
+            url=full_url or f"{BASE_URL}/job",
+            apply_url=full_url or None,
+            source=self.source,
+            source_id=_make_source_id(full_url, title),
+            is_remote="remote" in location.lower(),
         )
 
 
-def _id_from_url(url: str) -> str:
+def _make_source_id(url: str, fallback: str) -> str:
     parts = url.rstrip("/").rsplit("/", 1)
-    if len(parts) == 2:
-        return parts[1].rsplit("?")[0]
+    if len(parts) == 2 and parts[1].isdigit():
+        return f"mb-{parts[1]}"
     import hashlib
 
-    return hashlib.md5(url.encode()).hexdigest()[:10]
+    return f"mb-{hashlib.md5(fallback.encode()).hexdigest()[:10]}"
+
+
+def _parse_date(text: str) -> datetime | None:
+    import re
+
+    text = text.strip().lower()
+    now = datetime.now(UTC)
+    match = re.search(r"(\d+)\s*(day|week|month|hour|min|minute)", text)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        if "min" in unit or "hour" in unit:
+            return now
+        if "day" in unit:
+            return now - timedelta(days=value)
+        if "week" in unit:
+            return now - timedelta(weeks=value)
+        if "month" in unit:
+            return now - timedelta(days=value * 30)
+    return now

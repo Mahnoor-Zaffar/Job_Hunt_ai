@@ -40,6 +40,7 @@ class HttpClient:
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(self._timeout),
                 headers=self._base_headers,
+                follow_redirects=True,
             )
         return self._client
 
