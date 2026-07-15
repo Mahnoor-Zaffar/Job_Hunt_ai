@@ -108,7 +108,9 @@ async def search_jobs(
     technologies: list[str] | None = Query(
         None, description="Required technologies (e.g., Python, Docker)"
     ),
-    keywords: list[str] | None = Query(None, description="OR-filter title keywords (engineer, backend, python)"),
+    keywords: list[str] | None = Query(
+        None, description="OR-filter title keywords (engineer, backend, python)"
+    ),
     salary_min: float | None = Query(None, description="Minimum salary"),
     salary_max: float | None = Query(None, description="Maximum salary"),
     posted_after: datetime | None = Query(None, description="Jobs posted after this date"),
@@ -147,11 +149,7 @@ async def search_jobs(
         ]
 
     if keywords:
-        jobs = [
-            j
-            for j in jobs
-            if any(k.lower() in j.title.lower() for k in keywords)
-        ]
+        jobs = [j for j in jobs if any(k.lower() in j.title.lower() for k in keywords)]
 
     if posted_after:
         jobs = [j for j in jobs if j.posted_at and j.posted_at >= posted_after]
