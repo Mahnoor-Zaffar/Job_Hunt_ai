@@ -50,7 +50,7 @@ def _normalized_to_model(nj: NormalizedJob) -> Job:
         employment_type=nj.employment_type,
         experience_level=nj.experience_level,
         skills=nj.skills,
-        posted_at=nj.posted_at,
+        posted_at=nj.posted_at.replace(tzinfo=None) if nj.posted_at else None,
         expires_at=nj.expires_at,
         fingerprint=nj.fingerprint,
         status="active",
