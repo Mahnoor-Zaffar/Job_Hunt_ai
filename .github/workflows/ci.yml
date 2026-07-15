@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  type-check:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - run: uv run mypy backend/
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - run: uv run pytest tests/test_scrapers/ tests/test_core/ -v
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: jobhunting_test
+          POSTGRES_USER: jobuser
+          POSTGRES_PASSWORD: jobpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --dev
+      - name: Run migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
+      - name: Run integration tests
+        run: uv run pytest tests/test_health.py tests/test_repositories.py -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
+          REDIS_URL: redis://localhost:6379/0
