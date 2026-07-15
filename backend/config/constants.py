@@ -24,10 +24,13 @@ SUPPORTED_SOURCES: list[str] = [
     "mustakbil",
     "brightspyre",
     "remoteok",
+    "weworkremotely",
+    "remotive",
     "greenhouse",
     "lever",
     "ashby",
     "workable",
+    "ats",
 ]
 
 JOB_STATUSES: list[str] = ["active", "expired", "applied", "saved", "archived"]

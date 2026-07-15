@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,3 +21,23 @@ class ScraperSettings(BaseSettings):
     ENABLED_SCRAPERS: list[str] = []
     DISABLED_SCRAPERS: list[str] = []
     PROXY_URL: str = ""
+
+    def get_source_setting(self, source: str, key: str, default: str | None = None) -> str | None:
+        """Read a per-source environment variable.
+
+        Looks for ``SCRAPER_SOURCE_{SOURCE}_{KEY}``, e.g.::
+
+            SCRAPER_SOURCE_ROZEE_BASE_URL=https://www.rozee.pk
+            SCRAPER_SOURCE_ASHBY_API_KEY=abc-123
+        """
+        env_key = f"SCRAPER_SOURCE_{source.upper()}_{key.upper()}"
+        return os.getenv(env_key, default)
+
+    def get_source_int(self, source: str, key: str, default: int) -> int:
+        val = self.get_source_setting(source, key)
+        if val is not None:
+            try:
+                return int(val)
+            except ValueError:
+                pass
+        return default

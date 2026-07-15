@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from backend.config.settings import get_settings
 
@@ -20,5 +21,15 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
 )
+
+celery_app.conf.beat_schedule = {
+    "run-all-scrapers": {
+        "task": "run_all_scrapers",
+        "schedule": crontab(minute=f"*/{settings.SCRAPE_INTERVAL_MINUTES}"),
+        "options": {
+            "expires": settings.SCRAPE_INTERVAL_MINUTES * 60 - 10,
+        },
+    },
+}
 
 celery_app.autodiscover_tasks(["backend.workers.tasks"])
