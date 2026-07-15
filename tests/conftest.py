@@ -1,4 +1,5 @@
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
@@ -9,7 +10,10 @@ from backend.database.base import Base
 from backend.database.session import get_db
 from backend.main import app
 
-TEST_DATABASE_URL = "postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test"
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test",
+)
 
 
 @pytest_asyncio.fixture(scope="session")

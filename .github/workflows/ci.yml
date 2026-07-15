@@ -85,7 +85,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
       - name: Run integration tests
-        run: uv run pytest -v -m db --no-header
+        run: uv run pytest -v -m db -o "addopts=-v --tb=short"
         env:
           DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
           REDIS_URL: redis://localhost:6379/0
