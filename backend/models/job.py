@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Numeric, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models.base import BaseModel
@@ -14,11 +15,13 @@ class Job(BaseModel):
     title: Mapped[str] = mapped_column(String(255), index=True)
     company: Mapped[str] = mapped_column(String(255), index=True)
     company_url: Mapped[str | None] = mapped_column(String(500))
+    company_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("companies.id"), nullable=True)
 
     location: Mapped[str] = mapped_column(String(255))
     city: Mapped[str | None] = mapped_column(String(100))
     country: Mapped[str | None] = mapped_column(String(100))
     is_remote: Mapped[bool] = mapped_column(Boolean, default=False)
+    remote_type: Mapped[str] = mapped_column(String(20), default="onsite")
 
     description: Mapped[str | None] = mapped_column(Text)
     requirements: Mapped[str | None] = mapped_column(Text)

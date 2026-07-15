@@ -28,6 +28,7 @@ def _normalized_to_model(nj: NormalizedJob) -> Job:
         city=nj.city,
         country=nj.country,
         is_remote=nj.is_remote,
+        remote_type=nj.remote_type,
         description=nj.description,
         requirements=nj.requirements,
         url=nj.url,
