@@ -108,6 +108,7 @@ async def search_jobs(
     technologies: list[str] | None = Query(
         None, description="Required technologies (e.g., Python, Docker)"
     ),
+    keywords: list[str] | None = Query(None, description="OR-filter title keywords (engineer, backend, python)"),
     salary_min: float | None = Query(None, description="Minimum salary"),
     salary_max: float | None = Query(None, description="Maximum salary"),
     posted_after: datetime | None = Query(None, description="Jobs posted after this date"),
@@ -120,6 +121,7 @@ async def search_jobs(
 ) -> JobSearchResponse:
     """Search, filter, and sort jobs across all sources."""
     repo = JobRepository(db)
+    fetch_limit = 500 if keywords else per_page
     jobs = await repo.search(
         title=title,
         company=company,
@@ -133,8 +135,8 @@ async def search_jobs(
         salary_min=salary_min,
         salary_max=salary_max,
         status=status,
-        skip=(page - 1) * per_page,
-        limit=per_page,
+        skip=0,
+        limit=fetch_limit,
     )
 
     if technologies:
@@ -142,6 +144,13 @@ async def search_jobs(
             j
             for j in jobs
             if j.skills and any(t.lower() in [s.lower() for s in j.skills] for t in technologies)
+        ]
+
+    if keywords:
+        jobs = [
+            j
+            for j in jobs
+            if any(k.lower() in j.title.lower() for k in keywords)
         ]
 
     if posted_after:
@@ -159,11 +168,13 @@ async def search_jobs(
     if sort_by in sort_map:
         jobs.sort(key=sort_map[sort_by], reverse=not reverse)
 
-    total = await repo.count_active()
+    total = len(jobs)
+    start = (page - 1) * per_page
+    paged = jobs[start : start + per_page]
     pages = max(1, (total + per_page - 1) // per_page) if total else 1
 
     return JobSearchResponse(
-        items=[_job_to_response(j) for j in jobs],
+        items=[_job_to_response(j) for j in paged],
         total=total,
         page=page,
         per_page=per_page,
