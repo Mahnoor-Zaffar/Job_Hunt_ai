@@ -19,9 +19,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --dev
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
+      - run: cp .env.example .env
+      - run: uv sync --extra dev
+      - run: bash scripts/lint.sh
 
   type-check:
     name: Type Check (mypy)
@@ -31,7 +31,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --dev
+      - run: cp .env.example .env
+      - run: uv sync --extra dev
       - run: uv run mypy backend/
 
   unit-tests:
@@ -42,8 +43,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --dev
-      - run: uv run pytest tests/test_scrapers/ tests/test_core/ -v
+      - run: cp .env.example .env
+      - run: uv sync --extra dev
+      - run: bash scripts/test.sh
 
   integration-tests:
     name: Integration Tests
@@ -76,13 +78,14 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --dev
+      - run: cp .env.example .env
+      - run: uv sync --extra dev
       - name: Run migrations
         run: uv run alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
       - name: Run integration tests
-        run: uv run pytest tests/test_health.py tests/test_repositories.py -v
+        run: uv run pytest -v -m db --no-header
         env:
           DATABASE_URL: postgresql+asyncpg://jobuser:jobpass@localhost:5432/jobhunting_test
           REDIS_URL: redis://localhost:6379/0
