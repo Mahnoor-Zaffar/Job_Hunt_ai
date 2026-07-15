@@ -30,6 +30,7 @@ except ImportError:
     class _FakeMetric:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
+
         def labels(self, **_: Any) -> "_FakeMetric":
             return self
 
@@ -45,11 +46,11 @@ except ImportError:
         def observe(self, value: float) -> None:
             pass
 
-    Counter = _FakeMetric  # type: ignore[misc,assignment]
-    Gauge = _FakeMetric  # type: ignore[misc,assignment]
-    Histogram = _FakeMetric  # type: ignore[misc,assignment]
+    Counter = _FakeMetric
+    Gauge = _FakeMetric
+    Histogram = _FakeMetric
 
-    def generate_latest(*args: Any, **kwargs: Any) -> bytes:  # type: ignore[misc]
+    def generate_latest(*args: Any, **kwargs: Any) -> bytes:
         return b"# prometheus_client not installed\n"
 
 
@@ -119,4 +120,4 @@ def record_api_request(method: str, path: str, status_code: int, duration: float
 
 
 def get_metrics() -> bytes:
-    return generate_latest()
+    return generate_latest()  # type: ignore[no-any-return]
