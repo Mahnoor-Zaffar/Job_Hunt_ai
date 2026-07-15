@@ -1,10 +1,13 @@
 import asyncio
 import logging
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from backend.database.session import get_session_factory
 from backend.models.job import Job
+from backend.models.scrape_log import ScrapeLog
+from backend.repositories.infrastructure import ScrapeLogRepository
 from backend.repositories.job import JobRepository
 from backend.scrapers.base.scraper import BaseScraper
 from backend.scrapers.browser.manager import BrowserManager
@@ -90,49 +93,107 @@ class ScraperOrchestrator:
 
         semaphore = asyncio.Semaphore(self._settings.MAX_CONCURRENT)
         factory = get_session_factory()
+        max_retries = self._settings.MAX_RETRIES
 
         async def _run_one(cls: type[BaseScraper]) -> ScraperResult:
             async with semaphore:
-                scraper = cls(settings=self._settings, browser_manager=self._browser_manager)
+                source = cls.source
                 job_start = time.perf_counter()
-                try:
-                    jobs = await scraper.scrape()
-                    new_count = 0
-                    async with factory() as session:
-                        repo = JobRepository(session)
-                        for nj in jobs:
-                            existing = await repo.get_by_fingerprint(nj.fingerprint)
-                            if existing is None:
-                                model = _normalized_to_model(nj)
-                                await repo.create(model)
-                                new_count += 1
-                        await session.flush()
+                log_entry = ScrapeLog(
+                    source=source,
+                    status="running",
+                    started_at=datetime.now(UTC),
+                )
 
-                    duration = time.perf_counter() - job_start
-                    logger.info(
-                        "[%s] done — %d new jobs in %.2fs",
-                        scraper.source,
-                        new_count,
-                        duration,
-                    )
-                    return ScraperResult(
-                        source=scraper.source,
-                        success=True,
-                        jobs_found=new_count,
-                        duration_seconds=duration,
-                    )
-                except Exception as exc:
-                    duration = time.perf_counter() - job_start
-                    logger.exception("[%s] failed after %.2fs", scraper.source, duration)
-                    return ScraperResult(
-                        source=scraper.source,
-                        success=False,
-                        jobs_found=0,
-                        duration_seconds=duration,
-                        error=str(exc),
-                    )
-                finally:
-                    scraper.cleanup()
+                last_error: str | None = None
+                new_count = 0
+                dup_count = 0
+                total_discovered = 0
+
+                for attempt in range(max_retries):
+                    try:
+                        scraper = cls(
+                            settings=self._settings, browser_manager=self._browser_manager
+                        )
+                        jobs = await scraper.scrape()
+                        scraper.cleanup()
+
+                        total_discovered = len(jobs)
+                        new_count = 0
+                        dup_count = 0
+
+                        async with factory() as session:
+                            repo = JobRepository(session)
+                            for nj in jobs:
+                                existing = await repo.get_by_fingerprint(nj.fingerprint)
+                                if existing is None:
+                                    await repo.create(_normalized_to_model(nj))
+                                    new_count += 1
+                                else:
+                                    dup_count += 1
+                            await session.flush()
+
+                        duration = time.perf_counter() - job_start
+                        log_entry.status = "success"
+                        log_entry.jobs_discovered = total_discovered
+                        log_entry.jobs_new = new_count
+                        log_entry.jobs_duplicate = dup_count
+                        log_entry.duration_seconds = duration
+                        log_entry.finished_at = datetime.now(UTC)
+
+                        async with factory() as session:
+                            log_repo = ScrapeLogRepository(session)
+                            await log_repo.create(log_entry)
+                            await session.flush()
+
+                        logger.info(
+                            "[%s] done — %d new, %d dup in %.2fs",
+                            source,
+                            new_count,
+                            dup_count,
+                            duration,
+                        )
+                        return ScraperResult(
+                            source=source,
+                            success=True,
+                            jobs_found=new_count,
+                            duration_seconds=duration,
+                        )
+
+                    except Exception as exc:
+                        scraper.cleanup()
+                        last_error = str(exc)
+                        logger.warning(
+                            "[%s] attempt %d/%d failed: %s",
+                            source,
+                            attempt + 1,
+                            max_retries,
+                            last_error,
+                        )
+                        if attempt < max_retries - 1:
+                            backoff = 2**attempt
+                            await asyncio.sleep(backoff)
+                        else:
+                            duration = time.perf_counter() - job_start
+                            logger.exception("[%s] all %d retries exhausted", source, max_retries)
+
+                            log_entry.status = "failed"
+                            log_entry.error_message = last_error
+                            log_entry.duration_seconds = duration
+                            log_entry.finished_at = datetime.now(UTC)
+
+                            async with factory() as session:
+                                log_repo = ScrapeLogRepository(session)
+                                await log_repo.create(log_entry)
+                                await session.flush()
+
+                return ScraperResult(
+                    source=source,
+                    success=False,
+                    jobs_found=0,
+                    duration_seconds=time.perf_counter() - job_start,
+                    error=last_error,
+                )
 
         results = await asyncio.gather(
             *[_run_one(cls) for cls in scraper_classes],

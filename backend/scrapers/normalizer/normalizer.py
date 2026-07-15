@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 from backend.scrapers.models.models import NormalizedJob, RawJob, RemoteType
 from backend.scrapers.technologies.extractor import TechnologyExtractor
@@ -111,6 +112,7 @@ class Normalizer:
 
     def normalize(self, raw: RawJob) -> NormalizedJob:
         title = self._clean_title(raw.title)
+        company = self._normalize_company(raw.company)
         location, city, country, remote_type = self._parse_location(
             raw.location, raw.is_remote, raw.remote_type
         )
@@ -123,7 +125,7 @@ class Normalizer:
 
         normalized = NormalizedJob(
             title=title,
-            company=raw.company.strip() if raw.company else "",
+            company=company,
             company_url=raw.company_url,
             location=location,
             city=city or raw.city,
@@ -273,3 +275,35 @@ class Normalizer:
             combined = set(extracted)
 
         return sorted(combined) if combined else None
+
+    def _normalize_company(self, raw: str) -> str:
+        """Clean a company name by stripping whitespace and removing common suffixes."""
+        name = raw.strip() if raw else ""
+        name = " ".join(name.split())
+        if not name:
+            return name
+
+        for suffix in self._COMPANY_SUFFIXES:
+            if name.lower().endswith(" " + suffix.lower()):
+                name = name[: -(len(suffix) + 1)]
+                break
+
+        return name.strip()
+
+    _COMPANY_SUFFIXES: ClassVar[tuple[str, ...]] = (
+        "Private Limited",
+        "PVT LTD",
+        "PVT. LTD.",
+        "Pvt Ltd",
+        "Pvt. Ltd.",
+        "Corporation",
+        "Limited",
+        "LLC.",
+        "LLC",
+        "Inc.",
+        "Inc",
+        "LTD",
+        "Ltd.",
+        "Ltd",
+        "PLC",
+    )
