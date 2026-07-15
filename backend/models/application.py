@@ -20,4 +20,6 @@ class Application(BaseModel):
     match_score: Mapped[float | None] = mapped_column()
     interview_date: Mapped[datetime | None] = mapped_column(DateTime)
     feedback: Mapped[str | None] = mapped_column(Text)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    follow_up_at: Mapped[datetime | None] = mapped_column(DateTime)
     is_submitted: Mapped[bool] = mapped_column(default=False)

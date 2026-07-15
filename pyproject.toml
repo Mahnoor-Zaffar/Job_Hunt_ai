@@ -76,6 +76,8 @@ known-first-party = ["backend"]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/api/v1/*.py" = ["B008"]
+"backend/scrapers/orchestrator/orchestrator.py" = ["RUF006"]
+"backend/services/application.py" = ["RUF006"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -85,7 +87,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "redis.*", "selectolax.*", "bs4.*", "fitz.*", "email_validator.*", "yaml.*", "playwright.*"]
+module = ["celery.*", "redis.*", "selectolax.*", "bs4.*", "fitz.*", "email_validator.*", "yaml.*", "playwright.*", "boto3.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

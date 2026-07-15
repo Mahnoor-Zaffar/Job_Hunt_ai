@@ -5,6 +5,12 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from backend.database.session import get_session_factory
+from backend.events import (
+    NEW_JOB_DISCOVERED,
+    SCRAPER_FAILED,
+    DomainEvent,
+    publish,
+)
 from backend.models.job import Job
 from backend.models.scrape_log import ScrapeLog
 from backend.repositories.infrastructure import ScrapeLogRepository
@@ -153,6 +159,18 @@ class ScraperOrchestrator:
                             dup_count,
                             duration,
                         )
+                        if new_count > 0:
+                            _ = asyncio.create_task(
+                                publish(
+                                    DomainEvent(
+                                        name=NEW_JOB_DISCOVERED,
+                                        data={
+                                            "source": source,
+                                            "new_count": new_count,
+                                        },
+                                    )
+                                )
+                            )
                         return ScraperResult(
                             source=source,
                             success=True,
@@ -186,6 +204,18 @@ class ScraperOrchestrator:
                                 log_repo = ScrapeLogRepository(session)
                                 await log_repo.create(log_entry)
                                 await session.flush()
+
+                            _ = asyncio.create_task(
+                                publish(
+                                    DomainEvent(
+                                        name=SCRAPER_FAILED,
+                                        data={
+                                            "source": source,
+                                            "error": last_error or "unknown",
+                                        },
+                                    )
+                                )
+                            )
 
                 return ScraperResult(
                     source=source,

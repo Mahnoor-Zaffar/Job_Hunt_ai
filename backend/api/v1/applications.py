@@ -26,6 +26,8 @@ class ApplicationResponse(BaseSchema):
     match_score: float | None = None
     interview_date: datetime | None = None
     feedback: str | None = None
+    rejection_reason: str | None = None
+    follow_up_at: datetime | None = None
     is_submitted: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -45,6 +47,22 @@ class StatusUpdateRequest(BaseSchema):
 
 class NotesUpdateRequest(BaseSchema):
     notes: str
+
+
+class RejectRequest(BaseSchema):
+    reason: str
+
+
+class InterviewScheduleRequest(BaseSchema):
+    interview_date: datetime
+
+
+class OfferRequest(BaseSchema):
+    details: str = ""
+
+
+class FollowUpRequest(BaseSchema):
+    follow_up_at: datetime
 
 
 class ApplicationCreateRequest(BaseSchema):
@@ -72,6 +90,8 @@ def _application_to_response(a: Application) -> ApplicationResponse:
         match_score=a.match_score,
         interview_date=a.interview_date,
         feedback=a.feedback,
+        rejection_reason=a.rejection_reason,
+        follow_up_at=a.follow_up_at,
         is_submitted=a.is_submitted,
         created_at=a.created_at,
         updated_at=a.updated_at,
@@ -198,3 +218,84 @@ async def get_application_timeline(
             notes=app.notes,
         )
     ]
+
+
+@router.patch("/{application_id}/reject", response_model=ApplicationResponse)
+async def reject_application(
+    application_id: uuid.UUID,
+    body: RejectRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationResponse:
+    """Reject an application with a reason."""
+    from backend.services.application import ApplicationService
+
+    repo = ApplicationRepository(db)
+    svc = ApplicationService(repo)
+    app = await svc.reject(application_id, body.reason)
+    if app is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return _application_to_response(app)
+
+
+@router.patch("/{application_id}/interview", response_model=ApplicationResponse)
+async def schedule_interview(
+    application_id: uuid.UUID,
+    body: InterviewScheduleRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationResponse:
+    """Schedule an interview for an application."""
+    from backend.services.application import ApplicationService
+
+    repo = ApplicationRepository(db)
+    svc = ApplicationService(repo)
+    app = await svc.schedule_interview(application_id, body.interview_date)
+    if app is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return _application_to_response(app)
+
+
+@router.patch("/{application_id}/offer", response_model=ApplicationResponse)
+async def record_offer(
+    application_id: uuid.UUID,
+    body: OfferRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationResponse:
+    """Record an offer for an application."""
+    from backend.services.application import ApplicationService
+
+    repo = ApplicationRepository(db)
+    svc = ApplicationService(repo)
+    app = await svc.record_offer(application_id, body.details)
+    if app is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return _application_to_response(app)
+
+
+@router.patch("/{application_id}/follow-up", response_model=ApplicationResponse)
+async def set_follow_up(
+    application_id: uuid.UUID,
+    body: FollowUpRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationResponse:
+    """Set a follow-up reminder date."""
+    from backend.services.application import ApplicationService
+
+    repo = ApplicationRepository(db)
+    svc = ApplicationService(repo)
+    app = await svc.set_follow_up(application_id, body.follow_up_at)
+    if app is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return _application_to_response(app)
+
+
+@router.get("/reminders/due", response_model=list[ApplicationResponse])
+async def get_due_follow_ups(
+    db: AsyncSession = Depends(get_db),
+) -> list[ApplicationResponse]:
+    """Get applications with due follow-up reminders."""
+    from backend.services.application import ApplicationService
+
+    repo = ApplicationRepository(db)
+    svc = ApplicationService(repo)
+    apps = await svc.get_due_follow_ups()
+    return [_application_to_response(a) for a in apps]
