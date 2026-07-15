@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0003_domain_tables"
-down_revision: str | None = "0002_create_jobs_table"
+down_revision: str | None = "74d2c8a7ba4c"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

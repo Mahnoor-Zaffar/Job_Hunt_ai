@@ -54,7 +54,7 @@ async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
 ) -> ReportResponse:
     """Full analytics dashboard with all statistics."""
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
 

@@ -108,7 +108,7 @@ class ScraperOrchestrator:
                 log_entry = ScrapeLog(
                     source=source,
                     status="running",
-                    started_at=datetime.now(UTC),
+                    started_at=datetime.now(UTC).replace(tzinfo=None),
                 )
 
                 last_error: str | None = None
@@ -138,6 +138,7 @@ class ScraperOrchestrator:
                                 else:
                                     dup_count += 1
                             await session.flush()
+                            await session.commit()
 
                         duration = time.perf_counter() - job_start
                         log_entry.status = "success"
@@ -145,12 +146,13 @@ class ScraperOrchestrator:
                         log_entry.jobs_new = new_count
                         log_entry.jobs_duplicate = dup_count
                         log_entry.duration_seconds = duration
-                        log_entry.finished_at = datetime.now(UTC)
+                        log_entry.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
                         async with factory() as session:
                             log_repo = ScrapeLogRepository(session)
                             await log_repo.create(log_entry)
                             await session.flush()
+                            await session.commit()
 
                         logger.info(
                             "[%s] done — %d new, %d dup in %.2fs",
@@ -198,12 +200,13 @@ class ScraperOrchestrator:
                             log_entry.status = "failed"
                             log_entry.error_message = last_error
                             log_entry.duration_seconds = duration
-                            log_entry.finished_at = datetime.now(UTC)
+                            log_entry.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
                             async with factory() as session:
                                 log_repo = ScrapeLogRepository(session)
                                 await log_repo.create(log_entry)
                                 await session.flush()
+                            await session.commit()
 
                             _ = asyncio.create_task(
                                 publish(
