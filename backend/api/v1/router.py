@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from backend.api.v1.ai import router as ai_router
 from backend.api.v1.analytics import router as analytics_router
 from backend.api.v1.applications import router as applications_router
+from backend.api.v1.career import router as career_router
 from backend.api.v1.companies import router as companies_router
 from backend.api.v1.health import router as health_router
 from backend.api.v1.jobs import router as jobs_router
@@ -19,4 +20,5 @@ api_v1_router.include_router(applications_router, tags=["applications"])
 api_v1_router.include_router(resumes_router, tags=["resumes"])
 api_v1_router.include_router(notifications_router, tags=["notifications"])
 api_v1_router.include_router(ai_router, tags=["ai"])
+api_v1_router.include_router(career_router, tags=["career"])
 api_v1_router.include_router(analytics_router, tags=["analytics"])
