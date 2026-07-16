@@ -78,6 +78,7 @@ known-first-party = ["backend"]
 "backend/api/v1/*.py" = ["B008"]
 "backend/scrapers/orchestrator/orchestrator.py" = ["RUF006"]
 "backend/services/application.py" = ["RUF006"]
+"backend/automation/reliability.py" = ["RUF006"]
 
 [tool.mypy]
 python_version = "3.13"

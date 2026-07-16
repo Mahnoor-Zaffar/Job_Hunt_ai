@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.automation.assist.answers import ApplicationAssistant, STANDARD_QUESTIONS
+from backend.automation.assist.answers import STANDARD_QUESTIONS, ApplicationAssistant
 from backend.automation.assist.recorder import SessionRecord, SessionStep
 from backend.automation.assist.review import ReviewSession, ReviewStatus
 from backend.models.job import Job
@@ -23,15 +23,17 @@ class TestApplicationAssistant:
     @pytest.mark.asyncio
     async def test_generate_answers(self, mock_ai: AsyncMock) -> None:
         job = Job(
-            title="Software Engineer", company="Acme Corp",
-            location="Islamabad", url="https://example.com/job",
-            source="test", source_id="1", fingerprint="abc",
+            title="Software Engineer",
+            company="Acme Corp",
+            location="Islamabad",
+            url="https://example.com/job",
+            source="test",
+            source_id="1",
+            fingerprint="abc",
             description="Build APIs with Python and FastAPI.",
         )
         assistant = ApplicationAssistant(ai=mock_ai)
-        answers = await assistant.generate_answers(
-            job, "Backend engineer with 5 years experience."
-        )
+        answers = await assistant.generate_answers(job, "Backend engineer with 5 years experience.")
         assert isinstance(answers, dict)
         for q in STANDARD_QUESTIONS:
             assert q in answers
@@ -39,12 +41,18 @@ class TestApplicationAssistant:
     @pytest.mark.asyncio
     async def test_specific_questions(self, mock_ai: AsyncMock) -> None:
         job = Job(
-            title="Engineer", company="Co", location="Remote",
-            url="https://x.com", source="t", source_id="si", fingerprint="f",
+            title="Engineer",
+            company="Co",
+            location="Remote",
+            url="https://x.com",
+            source="t",
+            source_id="si",
+            fingerprint="f",
         )
         assistant = ApplicationAssistant(ai=mock_ai)
         answers = await assistant.generate_answers(
-            job, "Experienced developer.",
+            job,
+            "Experienced developer.",
             questions=["motivation", "salary_expectations"],
         )
         assert "motivation" in answers
@@ -53,14 +61,17 @@ class TestApplicationAssistant:
     @pytest.mark.asyncio
     async def test_ai_failure_returns_empty(self, mock_ai: AsyncMock) -> None:
         job = Job(
-            title="Engineer", company="Co", location="Remote",
-            url="https://x.com", source="t", source_id="si", fingerprint="f",
+            title="Engineer",
+            company="Co",
+            location="Remote",
+            url="https://x.com",
+            source="t",
+            source_id="si",
+            fingerprint="f",
         )
         mock_ai._ai.generate_text = AsyncMock(side_effect=RuntimeError("OpenRouter down"))
         assistant = ApplicationAssistant(ai=mock_ai)
-        answers = await assistant.generate_answers(
-            job, "", questions=["motivation"]
-        )
+        answers = await assistant.generate_answers(job, "", questions=["motivation"])
         assert answers["motivation"] == ""
 
 
@@ -97,7 +108,9 @@ class TestReviewSession:
 
     def test_to_dict(self) -> None:
         session = ReviewSession(
-            session_id="xyz", job_title="Engineer", company="Acme",
+            session_id="xyz",
+            job_title="Engineer",
+            company="Acme",
             apply_url="https://apply.example.com",
         )
         d = session.to_dict()
@@ -123,9 +136,12 @@ class TestSessionRecord:
 
     def test_to_dict(self) -> None:
         record = SessionRecord(
-            session_id="test", apply_url="https://x.com",
-            platform="greenhouse", job_title="Engineer",
-            company="Acme", success=True,
+            session_id="test",
+            apply_url="https://x.com",
+            platform="greenhouse",
+            job_title="Engineer",
+            company="Acme",
+            success=True,
         )
         d = record.to_dict()
         assert d["session_id"] == "test"
