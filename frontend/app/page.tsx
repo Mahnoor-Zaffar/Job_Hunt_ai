@@ -1,6 +1,7 @@
 import { BarChart } from "@/components/charts";
 import { Card, StatCard } from "@/components/ui";
 import { RunScrapersButton } from "@/components/run-scrapers";
+import { ScraperStatusPanel } from "@/components/scraper-status";
 
 async function getStats() {
   try {
@@ -59,7 +60,12 @@ export default async function DashboardPage() {
         ) : null}
       </div>
 
-      <Card title="Quick Actions">
+      <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <Card title="Scraper Status">
+          <ScraperStatusPanel />
+        </Card>
+
+        <Card title="Quick Actions">
         <div className="flex gap-3 flex-wrap">
           <a href="/jobs" className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">
             Browse All Jobs

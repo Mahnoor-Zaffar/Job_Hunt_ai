@@ -8,6 +8,7 @@ export default function ResumePage() {
   const [name, setName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [parsed, setParsed] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleUpload(e: React.FormEvent) {
@@ -45,6 +46,17 @@ export default function ResumePage() {
 
       const data = await res.json();
       setResult(`Resume uploaded! ID: ${data.id}`);
+
+      // Also parse the resume
+      const formData = new FormData();
+      formData.append("file", file);
+      const parseRes = await fetch("http://localhost:8000/api/v1/resumes/parse", {
+        method: "POST",
+        body: formData,
+      });
+      if (parseRes.ok) {
+        setParsed(await parseRes.json());
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     }
@@ -108,6 +120,54 @@ export default function ResumePage() {
             <li>✅ Plain Text (.txt) — Max 10MB</li>
           </ul>
         </Card>
+
+        {parsed && (
+          <Card title="Parsed Resume" className="mt-4">
+            <div className="space-y-3 text-sm">
+              {parsed.email && <p><strong>Email:</strong> {String(parsed.email)}</p>}
+              {parsed.phone && <p><strong>Phone:</strong> {String(parsed.phone)}</p>}
+              {parsed.location && <p><strong>Location:</strong> {String(parsed.location)}</p>}
+              {parsed.total_experience_years && (
+                <p><strong>Experience:</strong> {String(parsed.total_experience_years)} years</p>
+              )}
+              {(parsed.skills as string[])?.length > 0 && (
+                <div>
+                  <strong>Skills:</strong>
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {(parsed.skills as string[]).map((s: string) => (
+                      <span key={s} className="text-xs bg-muted px-2 py-0.5 rounded">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(parsed.experience as Array<Record<string, unknown>>)?.length > 0 && (
+                <div>
+                  <strong>Experience:</strong>
+                  {(parsed.experience as Array<Record<string, unknown>>).map((e, i) => (
+                    <p key={i} className="text-xs text-muted-foreground ml-2">
+                      {String(e.title)} at {String(e.company)}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {(parsed.education as Array<Record<string, unknown>>)?.length > 0 && (
+                <div>
+                  <strong>Education:</strong>
+                  {(parsed.education as Array<Record<string, unknown>>).map((e, i) => (
+                    <p key={i} className="text-xs text-muted-foreground ml-2">
+                      {String(e.degree)} — {String(e.school)} ({String(e.year)})
+                    </p>
+                  ))}
+                </div>
+              )}
+              {(parsed.certifications as string[])?.length > 0 && (
+                <div>
+                  <strong>Certifications:</strong> {(parsed.certifications as string[]).join(", ")}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
