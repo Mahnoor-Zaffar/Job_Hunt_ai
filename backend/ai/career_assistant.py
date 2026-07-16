@@ -119,11 +119,19 @@ class CareerAssistant:
         return result_data  # type: ignore[no-any-return]
 
     async def full_interview_prep(self, job: Job) -> dict[str, Any]:
+        import asyncio
+
+        results = await asyncio.gather(
+            self.technical_questions(job),
+            self.behavioral_questions(job),
+            self.company_questions(job.company),
+            self.follow_up_questions(job),
+        )
         return {
-            "technical": await self.technical_questions(job),
-            "behavioral": await self.behavioral_questions(job),
-            "company_specific": await self.company_questions(job.company),
-            "questions_to_ask": await self.follow_up_questions(job),
+            "technical": results[0],
+            "behavioral": results[1],
+            "company_specific": results[2],
+            "questions_to_ask": results[3],
         }
 
     # -- Application Assistance ----------------------------------------------

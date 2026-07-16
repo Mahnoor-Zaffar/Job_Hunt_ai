@@ -35,23 +35,34 @@ export function AiAssistantPanel({ jobId }: { jobId: string }) {
           onClick={() => fetchAi("summary", `http://localhost:8000/api/v1/career/insights/job/${jobId}`)}
           className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors disabled:opacity-50"
         >
-          {loading === "summary" ? "⏳ Working..." : "🤖 AI Summary"}
+          🤖 AI Summary
         </button>
         <button
           disabled={isBusy}
           onClick={() => fetchAi("interview", `http://localhost:8000/api/v1/career/interview/prep/${jobId}`)}
           className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors disabled:opacity-50"
         >
-          {loading === "interview" ? "⏳ Working..." : "🎯 Interview Prep"}
+          🎯 Interview Prep
         </button>
         <button
           disabled={isBusy}
           onClick={() => fetchAi("optimise", `http://localhost:8000/api/v1/career/resume/optimise?resume_text=Software+engineer+with+experience+in...&job_id=${jobId}`)}
           className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors disabled:opacity-50"
         >
-          {loading === "optimise" ? "⏳ Working..." : "📝 Optimise Resume"}
+          📝 Optimise Resume
         </button>
       </div>
+
+      {loading && (
+        <div className="mb-4 p-3 bg-muted/50 rounded border text-sm flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground">
+            {loading === "summary" && "Generating job summary..."}
+            {loading === "interview" && "Preparing interview questions (4 sections in parallel)..."}
+            {loading === "optimise" && "Optimizing your resume..."}
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 rounded text-sm text-red-700 mb-4">
