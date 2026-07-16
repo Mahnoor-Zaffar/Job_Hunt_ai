@@ -1,3 +1,4 @@
+import { AiAssistantPanel } from "@/components/ai-assistant-panel";
 import { Card } from "@/components/ui";
 
 async function getJob(id: string) {
@@ -110,17 +111,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           {/* AI Actions */}
           <Card title="AI Assistant">
-            <div className="flex gap-2 flex-wrap">
-              <a href={`/api/v1/career/insights/job/${id}`} target="_blank" className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors">
-                🤖 AI Summary
-              </a>
-              <a href={`/api/v1/career/interview/prep/${id}`} target="_blank" className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors">
-                🎯 Interview Prep
-              </a>
-              <a href={`http://localhost:8000/api/v1/career/resume/optimise?resume_text=My+skills+include...&job_id=${id}`} target="_blank" className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors">
-                📝 Optimise Resume
-              </a>
-            </div>
+            <AiAssistantPanel jobId={id} />
           </Card>
         </div>
 
