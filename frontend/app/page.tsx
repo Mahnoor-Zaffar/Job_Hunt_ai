@@ -85,5 +85,6 @@ export default async function DashboardPage() {
         </div>
       </Card>
     </div>
+    </div>
   );
 }
