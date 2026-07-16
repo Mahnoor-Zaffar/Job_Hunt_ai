@@ -8,6 +8,7 @@ from backend.api.v1.companies import router as companies_router
 from backend.api.v1.health import router as health_router
 from backend.api.v1.jobs import router as jobs_router
 from backend.api.v1.notifications import router as notifications_router
+from backend.api.v1.observability import router as observability_router
 from backend.api.v1.resumes import router as resumes_router
 from backend.api.v1.scrapers import router as scrapers_router
 
@@ -22,3 +23,4 @@ api_v1_router.include_router(notifications_router, tags=["notifications"])
 api_v1_router.include_router(ai_router, tags=["ai"])
 api_v1_router.include_router(career_router, tags=["career"])
 api_v1_router.include_router(analytics_router, tags=["analytics"])
+api_v1_router.include_router(observability_router, tags=["ai-observability"])

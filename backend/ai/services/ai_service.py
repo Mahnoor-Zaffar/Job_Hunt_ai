@@ -13,6 +13,7 @@ from backend.ai.prompts.defaults import get_prompt_registry
 from backend.ai.prompts.registry import PromptRegistry
 from backend.ai.utils.logging import AIRequestLogger
 from backend.ai.utils.retry import complete_with_retry
+from backend.ai.utils.sanitizer import InputSanitizer
 from backend.ai.utils.tokens import estimate_request_tokens
 from backend.ai.utils.validation import JSONValidationError, safe_extract_json
 
@@ -29,6 +30,7 @@ class AIService:
         self._models = models or ModelRegistry()
         self._prompts = prompts or get_prompt_registry()
         self._logger = request_logger or AIRequestLogger()
+        self._sanitizer = InputSanitizer()
 
     async def generate(
         self,
@@ -43,7 +45,8 @@ class AIService:
         required_keys: list[str] | None = None,
         fallback: str | None = None,
     ) -> dict[str, Any]:
-        rendered = self._prompts.render(prompt_name, variables)
+        vars_dict = self._sanitizer.sanitize_for_prompt(variables or {})
+        rendered = self._prompts.render(prompt_name, vars_dict)
 
         model_id = model or self._models.get_default().id
         if fallback is None:
