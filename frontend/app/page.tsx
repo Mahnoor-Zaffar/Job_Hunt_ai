@@ -1,15 +1,12 @@
 import { Card, StatCard } from "@/components/ui";
+import { RunScrapersButton } from "@/components/run-scrapers";
 
 async function getStats() {
   try {
-    const res = await fetch("http://localhost:8000/api/v1/analytics/dashboard", {
-      next: { revalidate: 60 },
-    });
+    const res = await fetch("http://localhost:8000/api/v1/analytics/dashboard", { next: { revalidate: 30 } });
     if (!res.ok) return null;
     return await res.json();
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export default async function DashboardPage() {
@@ -17,7 +14,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <RunScrapersButton />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Jobs" value={data?.stats?.total_jobs ?? 0} />
@@ -30,43 +30,53 @@ export default async function DashboardPage() {
         <Card title="Jobs by Source">
           {data?.jobs_by_source?.length ? (
             <ul className="space-y-2">
-              {data.jobs_by_source.map(
-                (s: { source: string; count: number }, i: number) => (
-                  <li key={i} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground capitalize">
-                      {s.source}
-                    </span>
-                    <span className="font-medium">{s.count}</span>
-                  </li>
-                ),
-              )}
+              {data.jobs_by_source.map((s: { source: string; count: number }, i: number) => (
+                <li key={i} className="flex justify-between text-sm items-center">
+                  <span className="text-muted-foreground capitalize">{s.source}</span>
+                  <span className="font-medium">{s.count}</span>
+                </li>
+              ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              {data ? "No data yet" : "Backend unavailable — start the API server"}
-            </p>
+            <p className="text-sm text-muted-foreground">Backend unavailable — start the API server</p>
           )}
         </Card>
 
         <Card title="Applications by Status">
           {data?.applications_by_status?.length ? (
             <ul className="space-y-2">
-              {data.applications_by_status.map(
-                (s: { source: string; count: number }, i: number) => (
-                  <li key={i} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground capitalize">
-                      {s.source}
-                    </span>
-                    <span className="font-medium">{s.count}</span>
-                  </li>
-                ),
-              )}
+              {data.applications_by_status.map((s: { source: string; count: number }, i: number) => (
+                <li key={i} className="flex justify-between text-sm items-center">
+                  <span className="text-muted-foreground capitalize">{s.source || "none"}</span>
+                  <span className="font-medium">{s.count}</span>
+                </li>
+              ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              {data ? "No data yet" : "Backend unavailable — start the API server"}
-            </p>
+            <p className="text-sm text-muted-foreground">No applications yet</p>
           )}
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card title="Quick Actions">
+          <div className="flex gap-3 flex-wrap">
+            <a href="/jobs" className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">
+              Browse All Jobs
+            </a>
+            <a href="/jobs?q=backend" className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors">
+              Backend Jobs
+            </a>
+            <a href="/jobs?q=frontend" className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors">
+              Frontend Jobs
+            </a>
+            <a href="http://localhost:8000/docs" target="_blank" className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors">
+              API Docs
+            </a>
+            <a href="http://localhost:8000/api/v1/ai/evaluate" target="_blank" className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors">
+              AI Evaluation
+            </a>
+          </div>
         </Card>
       </div>
     </div>

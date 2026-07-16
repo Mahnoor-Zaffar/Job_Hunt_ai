@@ -152,7 +152,9 @@ export default async function JobsPage({
               <Card key={String(job.id)}>
                 <div className="flex justify-between items-start">
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold truncate">{String(job.title)}</h3>
+                    <a href={`/jobs/${String(job.id)}`} className="hover:text-primary transition-colors">
+                      <h3 className="font-semibold truncate">{String(job.title)}</h3>
+                    </a>
                     <p className="text-sm text-muted-foreground">
                       {String(job.company)} — {String(job.location)}
                     </p>
@@ -174,18 +176,24 @@ export default async function JobsPage({
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-1 text-sm text-muted-foreground shrink-0 ml-4">
+                  <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground shrink-0 ml-4">
                     {job.salary_min ? (
                       <span className="text-primary font-medium whitespace-nowrap">
                         ${String(job.salary_min)}–${String(job.salary_max)}
                       </span>
                     ) : null}
+                    <a
+                      href={`/jobs/${String(job.id)}`}
+                      className="text-xs text-primary hover:underline font-medium"
+                    >
+                      View Details →
+                    </a>
                     {job.apply_url ? (
                       <a
                         href={String(job.apply_url)}
                         target="_blank"
                         rel="noopener"
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-muted-foreground hover:underline"
                       >
                         Apply →
                       </a>
