@@ -1,6 +1,5 @@
 """Career assistant API — resume, cover letter, interview, application, insights."""
 
-import os
 import uuid
 from typing import Any
 
@@ -9,6 +8,7 @@ from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.ai.career_assistant import CareerAssistant
+from backend.config.settings import get_settings
 from backend.database.session import get_db
 from backend.models.job import Job
 from backend.repositories.job import JobRepository
@@ -18,7 +18,8 @@ router = APIRouter(prefix="/career", tags=["career"])
 
 
 def _check_api_key() -> None:
-    if not os.getenv("OPENROUTER_API_KEY", "").strip():
+    settings = get_settings()
+    if not settings.OPENROUTER_API_KEY or settings.OPENROUTER_API_KEY == "your-openrouter-api-key":
         raise HTTPException(
             status_code=503,
             detail="AI features require an OpenRouter API key. Set OPENROUTER_API_KEY in your .env file.",
