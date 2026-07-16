@@ -1,5 +1,6 @@
 """Career assistant API — resume, cover letter, interview, application, insights."""
 
+import os
 import uuid
 from typing import Any
 
@@ -14,6 +15,14 @@ from backend.repositories.job import JobRepository
 from backend.schemas.base import BaseSchema
 
 router = APIRouter(prefix="/career", tags=["career"])
+
+
+def _check_api_key() -> None:
+    if not os.getenv("OPENROUTER_API_KEY", "").strip():
+        raise HTTPException(
+            status_code=503,
+            detail="AI features require an OpenRouter API key. Set OPENROUTER_API_KEY in your .env file.",
+        )
 
 
 # -- Request/Response schemas -----------------------------------------------
@@ -131,24 +140,26 @@ async def _get_job(db: AsyncSession, job_id: str) -> Job:
 
 _assistant = CareerAssistant()
 
+_need_key = Depends(_check_api_key)
+
 
 # -- Resume Optimization ----------------------------------------------------
 
 
 @router.post("/resume/rewrite-bullets", response_model=BulletsResponse)
-async def rewrite_bullets(body: BulletsRequest) -> BulletsResponse:
+async def rewrite_bullets(body: BulletsRequest, _need_key: None = _need_key) -> BulletsResponse:
     result = await _assistant.rewrite_bullets(body.bullets)
     return BulletsResponse(rewritten=result)
 
 
 @router.post("/resume/suggest-keywords", response_model=KeywordsResponse)
-async def suggest_keywords(body: KeywordsRequest) -> KeywordsResponse:
+async def suggest_keywords(body: KeywordsRequest, _need_key: None = _need_key) -> KeywordsResponse:
     keywords = await _assistant.suggest_keywords(body.job_description, body.current_skills)
     return KeywordsResponse(keywords=keywords)
 
 
 @router.post("/resume/optimise", response_model=BulletsResponse)
-async def optimise_resume(
+async def optimise_resume(_need_key: None = _need_key,
     resume_text: str = Query(..., description="Resume text to optimise"),
     job_id: str = Query(..., description="Target job ID"),
     db: AsyncSession = Depends(get_db),
@@ -164,6 +175,7 @@ async def optimise_resume(
 @router.post("/cover-letter", response_model=CoverLetterResponse)
 async def generate_cover_letter(
     body: CoverLetterRequest,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> CoverLetterResponse:
     job = await _get_job(db, body.job_id)
@@ -177,6 +189,7 @@ async def generate_cover_letter(
 @router.get("/interview/prep/{job_id}", response_model=InterviewPrepResponse)
 async def interview_prep(
     job_id: str,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> InterviewPrepResponse:
     job = await _get_job(db, job_id)
@@ -190,6 +203,7 @@ async def interview_prep(
 @router.post("/application/short-answer", response_model=ShortAnswerResponse)
 async def short_answer(
     body: ShortAnswerRequest,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> ShortAnswerResponse:
     job = await _get_job(db, body.job_id)
@@ -200,6 +214,7 @@ async def short_answer(
 @router.post("/application/motivation", response_model=MotivationResponse)
 async def motivation_statement(
     body: MotivationRequest,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> MotivationResponse:
     job = await _get_job(db, body.job_id)
@@ -208,7 +223,7 @@ async def motivation_statement(
 
 
 @router.post("/application/salary-guidance", response_model=SalaryGuidanceResponse)
-async def salary_guidance(body: SalaryGuidanceRequest) -> SalaryGuidanceResponse:
+async def salary_guidance(body: SalaryGuidanceRequest, _need_key: None = _need_key) -> SalaryGuidanceResponse:
     result = await _assistant.salary_guidance(
         body.job_title, body.location, body.experience_level, body.skills
     )
@@ -216,7 +231,7 @@ async def salary_guidance(body: SalaryGuidanceRequest) -> SalaryGuidanceResponse
 
 
 @router.post("/application/relocation", response_model=RelocationResponse)
-async def relocation_response(body: RelocationRequest) -> RelocationResponse:
+async def relocation_response(body: RelocationRequest, _need_key: None = _need_key) -> RelocationResponse:
     result = await _assistant.relocation_response(
         body.job_location, body.candidate_location, body.remote_status
     )
@@ -229,6 +244,7 @@ async def relocation_response(body: RelocationRequest) -> RelocationResponse:
 @router.get("/insights/job/{job_id}", response_model=JobSummaryResponse)
 async def job_summary(
     job_id: str,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> JobSummaryResponse:
     job = await _get_job(db, job_id)
@@ -237,13 +253,13 @@ async def job_summary(
 
 
 @router.get("/insights/company/{company_name}", response_model=CompanySummaryResponse)
-async def company_summary(company_name: str) -> CompanySummaryResponse:
+async def company_summary(company_name: str, _need_key: None = _need_key) -> CompanySummaryResponse:
     result = await _assistant.company_summary(company_name)
     return CompanySummaryResponse(summary=result)
 
 
 @router.post("/insights/tech-demand", response_model=TechDemandResponse)
-async def tech_demand(
+async def tech_demand(_need_key: None = _need_key,
     technologies: list[str] = Query(..., description="Technologies to analyze"),
 ) -> TechDemandResponse:
     result = await _assistant.technology_demand(technologies)
@@ -256,6 +272,7 @@ async def tech_demand(
 @router.post("/skill-gap", response_model=SkillGapResponse)
 async def skill_gap(
     body: SkillGapRequest,
+    _need_key: None = _need_key,
     db: AsyncSession = Depends(get_db),
 ) -> SkillGapResponse:
     job = await _get_job(db, body.job_id)
