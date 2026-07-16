@@ -38,7 +38,12 @@ from backend.scrapers.models.models import (
 )
 from backend.scrapers.normalizer.normalizer import Normalizer
 from backend.scrapers.orchestrator.orchestrator import ScraperOrchestrator
-from backend.scrapers.pakistan import BrightSpyreScraper, MustakbilScraper, RozeeScraper
+from backend.scrapers.pakistan import (
+    BrightSpyreScraper,
+    IndeedScraper,
+    MustakbilScraper,
+    RozeeScraper,
+)
 from backend.scrapers.registry.registry import ScraperRegistry, register
 from backend.scrapers.remote import RemoteOKScraper, RemotiveScraper, WeWorkRemotelyScraper
 from backend.scrapers.technologies import TechnologyExtractor, extract_technologies
@@ -55,6 +60,7 @@ __all__ = [
     "ExecutionSummary",
     "GreenhouseAdapter",
     "HttpClient",
+    "IndeedScraper",
     "LeverAdapter",
     "MustakbilScraper",
     "NormalizedJob",

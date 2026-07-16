@@ -23,6 +23,7 @@ SUPPORTED_SOURCES: list[str] = [
     "rozee",
     "mustakbil",
     "brightspyre",
+    "indeed",
     "remoteok",
     "weworkremotely",
     "remotive",
