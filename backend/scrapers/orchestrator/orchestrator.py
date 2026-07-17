@@ -13,6 +13,7 @@ from backend.events import (
 )
 from backend.models.job import Job
 from backend.models.scrape_log import ScrapeLog
+from backend.repositories.company import CompanyRepository
 from backend.repositories.infrastructure import ScrapeLogRepository
 from backend.repositories.job import JobRepository
 from backend.scrapers.base.scraper import BaseScraper
@@ -137,6 +138,15 @@ class ScraperOrchestrator:
                                     new_count += 1
                                 else:
                                     dup_count += 1
+
+                            for nj in jobs:
+                                if nj.company:
+                                    try:
+                                        company_repo = CompanyRepository(session)
+                                        await company_repo.get_or_create(nj.company.strip())
+                                    except Exception:
+                                        pass
+
                             await session.flush()
                             await session.commit()
 
