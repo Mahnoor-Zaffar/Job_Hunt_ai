@@ -2,6 +2,7 @@ import { BarChart, StatPill } from "@/components/charts";
 import { Card, StatCard } from "@/components/ui";
 import { RunScrapersButton } from "@/components/run-scrapers";
 import { ScraperStatusPanel } from "@/components/scraper-status";
+import { LocationCards } from "@/components/location-cards";
 
 async function getStats() {
   try {
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
       <div className="grid md:grid-cols-2 gap-6">
         {data?.jobs_by_location?.length ? (
           <Card title="Jobs by Location">
-            <BarChart data={data.jobs_by_location.map((s: { source: string; count: number }) => ({ label: s.source || "Unknown", value: s.count }))} />
+            <LocationCards data={data.jobs_by_location} />
           </Card>
         ) : null}
 
