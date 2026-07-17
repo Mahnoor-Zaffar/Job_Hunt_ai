@@ -27,6 +27,41 @@ export function AiAssistantPanel({ jobId }: { jobId: string }) {
 
   const isBusy = loading !== null;
 
+  async function generateCV(jobId: string) {
+    setLoading("cv");
+    setError(null);
+    setResults(null);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/career/generate-cv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: "Your Name",
+          email: "you@example.com",
+          phone: "+1-555-0123",
+          location: "Islamabad, Pakistan",
+          summary: "Experienced software engineer with expertise in building scalable systems.",
+          skills: ["Python", "FastAPI", "Docker", "PostgreSQL", "React", "TypeScript"],
+          experience: [
+            { title: "Senior Engineer", company: "Acme Corp", start_date: "2022", end_date: "Present", highlights: ["Led migration to microservices", "Built real-time data pipeline"] },
+            { title: "Engineer", company: "StartupCo", start_date: "2020", end_date: "2022", highlights: ["Designed REST APIs", "Implemented CI/CD"] },
+          ],
+          education: [
+            { degree: "B.Sc.", field: "Computer Science", school: "NUST", year: "2020" },
+          ],
+          job_id: jobId,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to generate CV");
+      const data = await res.json();
+      window.open(`http://localhost:8000${data.download_url}`, "_blank");
+      setResults({ action: "cv", data: { message: "CV generated and downloading..." } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    }
+    setLoading(null);
+  }
+
   return (
     <div>
       <div className="flex gap-2 flex-wrap mb-4">
@@ -50,6 +85,13 @@ export function AiAssistantPanel({ jobId }: { jobId: string }) {
           className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors disabled:opacity-50"
         >
           📝 Optimise Resume
+        </button>
+        <button
+          disabled={isBusy}
+          onClick={() => generateCV(jobId)}
+          className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          {loading === "cv" ? "⏳ Generating..." : "📄 Generate CV"}
         </button>
       </div>
 

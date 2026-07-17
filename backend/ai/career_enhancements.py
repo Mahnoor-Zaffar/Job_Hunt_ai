@@ -43,7 +43,15 @@ class CareerEnhancer:
                 "candidate_profile": candidate_profile[:2000],
             },
             model="anthropic/claude-3.5-sonnet",
-            required_keys=["overall_score", "block_a", "block_b", "block_c", "block_d", "block_e", "block_f"],
+            required_keys=[
+                "overall_score",
+                "block_a",
+                "block_b",
+                "block_c",
+                "block_d",
+                "block_e",
+                "block_f",
+            ],
         )
 
     async def company_deep_research(self, company_name: str) -> dict[str, Any]:
@@ -112,11 +120,12 @@ class CareerEnhancer:
                 subject = line.split(":", 1)[1].strip()
             else:
                 body_lines.append(line)
-        return {"subject": subject or f"Application: {job.title} at {job.company}", "body": "\n".join(body_lines).strip()}
+        return {
+            "subject": subject or f"Application: {job.title} at {job.company}",
+            "body": "\n".join(body_lines).strip(),
+        }
 
-    async def interview_story_bank(
-        self, candidate_profile: str, job: Job
-    ) -> dict[str, Any]:
+    async def interview_story_bank(self, candidate_profile: str, job: Job) -> dict[str, Any]:
         return await self._ai.generate_json(
             "career.story_bank",
             {

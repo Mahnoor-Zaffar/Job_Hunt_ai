@@ -4,6 +4,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -162,7 +163,8 @@ async def suggest_keywords(body: KeywordsRequest, _need_key: None = _need_key) -
 
 
 @router.post("/resume/optimise", response_model=BulletsResponse)
-async def optimise_resume(_need_key: None = _need_key,
+async def optimise_resume(
+    _need_key: None = _need_key,
     resume_text: str = Query(..., description="Resume text to optimise"),
     job_id: str = Query(..., description="Target job ID"),
     db: AsyncSession = Depends(get_db),
@@ -226,7 +228,9 @@ async def motivation_statement(
 
 
 @router.post("/application/salary-guidance", response_model=SalaryGuidanceResponse)
-async def salary_guidance(body: SalaryGuidanceRequest, _need_key: None = _need_key) -> SalaryGuidanceResponse:
+async def salary_guidance(
+    body: SalaryGuidanceRequest, _need_key: None = _need_key
+) -> SalaryGuidanceResponse:
     result = await _assistant.salary_guidance(
         body.job_title, body.location, body.experience_level, body.skills
     )
@@ -234,7 +238,9 @@ async def salary_guidance(body: SalaryGuidanceRequest, _need_key: None = _need_k
 
 
 @router.post("/application/relocation", response_model=RelocationResponse)
-async def relocation_response(body: RelocationRequest, _need_key: None = _need_key) -> RelocationResponse:
+async def relocation_response(
+    body: RelocationRequest, _need_key: None = _need_key
+) -> RelocationResponse:
     result = await _assistant.relocation_response(
         body.job_location, body.candidate_location, body.remote_status
     )
@@ -262,7 +268,8 @@ async def company_summary(company_name: str, _need_key: None = _need_key) -> Com
 
 
 @router.post("/insights/tech-demand", response_model=TechDemandResponse)
-async def tech_demand(_need_key: None = _need_key,
+async def tech_demand(
+    _need_key: None = _need_key,
     technologies: list[str] = Query(..., description="Technologies to analyze"),
 ) -> TechDemandResponse:
     result = await _assistant.technology_demand(technologies)
@@ -394,6 +401,85 @@ class EvalRequest(BaseSchema):
 
 class EvalResponse(BaseSchema):
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+class CVGenerateRequest(BaseSchema):
+    full_name: str = "John Doe"
+    email: str = "john@example.com"
+    phone: str = ""
+    location: str = ""
+    summary: str = ""
+    skills: list[str] = Field(default_factory=list)
+    experience: list[dict[str, Any]] = Field(default_factory=list)
+    education: list[dict[str, Any]] = Field(default_factory=list)
+    linkedin: str = ""
+    projects: list[str] | None = None
+    certifications: list[str] | None = None
+    job_id: str | None = None
+
+
+class CVGenerateResponse(BaseSchema):
+    download_url: str
+    filename: str
+
+
+@router.post("/generate-cv", response_model=CVGenerateResponse)
+async def generate_cv(body: CVGenerateRequest, _need_key: None = _need_key) -> CVGenerateResponse:
+    from backend.ai.pdf_generator import CVGenerator
+
+    keyword_skills = None
+    if body.job_id:
+        try:
+            import uuid as uuid_mod
+
+            from backend.database.session import get_session_factory
+            from backend.repositories.job import JobRepository
+
+            factory = get_session_factory()
+            async with factory() as session:
+                repo = JobRepository(session)
+                job = await repo.get_by_id(uuid_mod.UUID(body.job_id))
+                if job and job.skills:
+                    keyword_skills = job.skills
+        except Exception:
+            pass
+
+    gen = CVGenerator()
+    html = gen.generate_html(
+        full_name=body.full_name,
+        email=body.email,
+        phone=body.phone,
+        location=body.location,
+        summary=body.summary,
+        skills=body.skills,
+        experience=body.experience,
+        education=body.education,
+        linkedin=body.linkedin,
+        projects=body.projects,
+        certifications=body.certifications,
+        keyword_skills=keyword_skills,
+    )
+
+    import os
+    import time
+
+    os.makedirs("output", exist_ok=True)
+    filename = f"cv_{int(time.time())}.pdf"
+    output_path = f"output/{filename}"
+
+    await gen.generate_pdf(html, output_path)
+
+    return CVGenerateResponse(
+        download_url=f"/api/v1/career/download-cv/{filename}", filename=filename
+    )
+
+
+@router.get("/download-cv/{filename}")
+async def download_cv(filename: str) -> FileResponse:
+    path = f"output/{filename}"
+    if not __import__("os").path.exists(path):
+        raise HTTPException(status_code=404, detail="CV not found")
+    return FileResponse(path, media_type="application/pdf", filename=filename)
 
 
 @router.get("/archetype/{job_id}", response_model=ArchetypeResponse)
