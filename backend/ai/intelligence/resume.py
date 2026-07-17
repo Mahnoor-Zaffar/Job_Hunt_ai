@@ -45,17 +45,31 @@ SECTION_PATTERNS = {
 }
 
 JOB_ENTRY_PATTERN = re.compile(
-    r"(?P<title>[A-Z][\w\s/&-]+?)\s*(?:at|@|,)\s*(?P<company>[A-Z][\w\s.&-]+?)?\s*"
+    r"(?P<title>[A-Z][\w\s/&#+-]+?)\s+at\s+(?P<company>[A-Z][\w\s.&()-]+?)\s*"
     r"(?P<dates>\(?\d{4}\s*(?:-|to)\s*(?:\d{4}|Present|Current)\)?)",
+    re.MULTILINE,
+)
+
+JOB_ENTRY_PATTERN_ALT = re.compile(
+    r"^(?P<title>[A-Z][\w\s/&#+-]{5,60})$",
     re.MULTILINE,
 )
 
 EDUCATION_PATTERN = re.compile(
     r"(?P<degree>B\.?\s*Sc\.?|M\.?\s*Sc\.?|B\.?\s*A\.?|M\.?\s*A\.?|Ph\.?\s*D\.?|"
-    r"Bachelor|Master|Doctorate|Bachelors|Masters|MBA|Associate|Diploma)"
-    r"\s+(?:of|in)?\s*(?P<field>[\w\s&]+?)?"
-    r"\s*(?:from|at|,)?\s*(?P<school>[^,\n]+?)?"
-    r"\s*(?P<year>\d{4})?",
+    r"Bachelor|Master|Doctorate|Bachelors|Masters|MBA|Associate|Diploma|BS|MS|BA|MA|PhD)"
+    r"[,\s]+(?:of|in)?\s*(?P<field>[A-Z][\w\s&]{2,30})"
+    r"\s+from\s+(?P<school>[A-Z][\w\s.&,-]{2,30})\b"
+    r"(?:\s*\((?P<year>\d{4})\))?",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+EDUCATION_PATTERN_SIMPLE = re.compile(
+    r"(?P<degree>B\.?\s*Sc\.?|M\.?\s*Sc\.?|B\.?\s*A\.?|M\.?\s*A\.?|Ph\.?\s*D\.?|"
+    r"Bachelor|Master|Doctorate|Bachelors|Masters|MBA|Associate|Diploma|BS|MS|BA|MA|PhD)"
+    r"[,\s]+(?P<field>[A-Z][\w\s&]+?)"
+    r"[,\s]+(?P<school>[A-Z][\w\s.&,]+?)"
+    r"[,\s]*(?P<year>\d{4})",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -184,34 +198,25 @@ class ResumeIntelligence:
     def _extract_jobs(self, text: str) -> list[JobEntry]:
         jobs: list[JobEntry] = []
         for match in JOB_ENTRY_PATTERN.finditer(text):
-            jobs.append(
-                JobEntry(
-                    title=match.group("title").strip() if match.group("title") else "",
-                    company=match.group("company").strip() if match.group("company") else "",
-                    start_date="",
-                    end_date="",
-                )
-            )
-
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
-        if not jobs:
-            for line in lines:
-                if len(line) > 20 and any(c.isupper() for c in line[:3]):
-                    jobs.append(JobEntry(title=line))
-
+            title = match.group("title").strip() if match.group("title") else ""
+            company = match.group("company").strip() if match.group("company") else ""
+            dates = match.group("dates") if match.group("dates") else ""
+            start_date, end_date = _parse_date_range(dates)
+            jobs.append(JobEntry(title=title, company=company, start_date=start_date, end_date=end_date))
         return jobs
 
     def _extract_education(self, text: str) -> list[EducationEntry]:
         entries: list[EducationEntry] = []
-        for match in EDUCATION_PATTERN.finditer(text):
-            entries.append(
-                EducationEntry(
+        for pattern in (EDUCATION_PATTERN, EDUCATION_PATTERN_SIMPLE):
+            for match in pattern.finditer(text):
+                entry = EducationEntry(
                     degree=match.group("degree") or "",
                     field=match.group("field") or "",
                     school=match.group("school") or "",
                     year=match.group("year") or "",
                 )
-            )
+                if entry not in entries:
+                    entries.append(entry)
         return entries
 
     def _extract_bullet_items(self, text: str) -> list[str]:
@@ -225,6 +230,17 @@ class ResumeIntelligence:
     def _estimate_experience(self, jobs: list[JobEntry]) -> int | None:
         if not jobs:
             return None
+        total = 0
+        for job in jobs:
+            if job.start_date and job.end_date:
+                try:
+                    start = int(job.start_date)
+                    end = int(job.end_date.replace("Present", "2026").replace("Current", "2026"))
+                    total += max(0, end - start)
+                except ValueError:
+                    continue
+        if total > 0:
+            return total
         return max(1, len(jobs) * 2)
 
 
@@ -248,6 +264,22 @@ def _extract_contact(text: str) -> tuple[str, str, str]:
                 break
 
     return name, email, phone
+
+
+_SECTION_NAMES = {"summary", "experience", "education", "skills", "certifications", "projects", "languages"}
+
+
+def _parse_date_range(dates: str) -> tuple[str, str]:
+    import re
+
+    nums = re.findall(r"\d{4}", dates)
+    if len(nums) >= 2:
+        return nums[0], nums[1]
+    if len(nums) == 1:
+        if "Present" in dates or "Current" in dates:
+            return nums[0], "Present"
+        return nums[0], ""
+    return "", ""
 
 
 def _extract_location(text: str) -> str:
