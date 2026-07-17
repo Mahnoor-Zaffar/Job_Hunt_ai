@@ -23,6 +23,8 @@ dependencies = [
     "pymupdf>=1.25",
     "python-multipart>=0.0.18",
     "pyyaml>=6.0.3",
+    "python-jose>=3.5.0",
+    "bcrypt>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -88,7 +90,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "redis.*", "selectolax.*", "bs4.*", "fitz.*", "email_validator.*", "yaml.*", "playwright.*", "boto3.*", "prometheus_client", "tiktoken", "sentence_transformers", "docx"]
+module = ["celery.*", "redis.*", "selectolax.*", "bs4.*", "fitz.*", "email_validator.*", "yaml.*", "playwright.*", "boto3.*", "prometheus_client", "tiktoken", "sentence_transformers", "docx", "jose.*", "jose", "passlib.*", "passlib"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -108,4 +110,5 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
+    "ruff>=0.15.21",
 ]
