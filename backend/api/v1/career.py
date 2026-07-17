@@ -8,6 +8,7 @@ from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.ai.career_assistant import CareerAssistant
+from backend.ai.career_enhancements import CareerEnhancer
 from backend.config.settings import get_settings
 from backend.database.session import get_db
 from backend.models.job import Job
@@ -140,6 +141,7 @@ async def _get_job(db: AsyncSession, job_id: str) -> Job:
 
 
 _assistant = CareerAssistant()
+_enhancer = CareerEnhancer()
 
 _need_key = Depends(_check_api_key)
 
@@ -279,3 +281,102 @@ async def skill_gap(
     job = await _get_job(db, body.job_id)
     result = await _assistant.skill_gap_analysis(body.current_skills, job)
     return SkillGapResponse(data=result)
+
+
+# -- Career Enhancements ----------------------------------------------------
+
+
+class CompanyResearchResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContactDiscoveryResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class AppEmailRequest(BaseSchema):
+    job_id: str
+    email_type: str = "cold"
+    candidate_profile: str = ""
+
+
+class AppEmailResponse(BaseSchema):
+    subject: str
+    body: str
+
+
+class StoryBankResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScamCheckResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class NegotiationResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.get("/research/company/{company_name}", response_model=CompanyResearchResponse)
+async def company_research(
+    company_name: str, _need_key: None = _need_key
+) -> CompanyResearchResponse:
+    result = await _enhancer.company_deep_research(company_name)
+    return CompanyResearchResponse(data=result)
+
+
+@router.get("/contacts/{company_name}", response_model=ContactDiscoveryResponse)
+async def contact_discovery(
+    company_name: str,
+    job_title: str = "",
+    _need_key: None = _need_key,
+) -> ContactDiscoveryResponse:
+    result = await _enhancer.contact_discovery(company_name, job_title)
+    return ContactDiscoveryResponse(data=result)
+
+
+@router.post("/email/application", response_model=AppEmailResponse)
+async def application_email(
+    body: AppEmailRequest,
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> AppEmailResponse:
+    job = await _get_job(db, body.job_id)
+    result = await _enhancer.application_email(job, body.email_type, body.candidate_profile)
+    return AppEmailResponse(**result)
+
+
+@router.post("/stories", response_model=StoryBankResponse)
+async def story_bank(
+    candidate_profile: str = Query(..., description="Your career profile"),
+    job_id: str = Query(..., description="Target job ID"),
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> StoryBankResponse:
+    job = await _get_job(db, job_id)
+    result = await _enhancer.interview_story_bank(candidate_profile, job)
+    return StoryBankResponse(data=result)
+
+
+@router.get("/scam-check/{job_id}", response_model=ScamCheckResponse)
+async def scam_check(
+    job_id: str,
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> ScamCheckResponse:
+    job = await _get_job(db, job_id)
+    result = await _enhancer.scam_check(job)
+    return ScamCheckResponse(data=result)
+
+
+@router.post("/negotiation/{job_id}", response_model=NegotiationResponse)
+async def negotiation(
+    job_id: str,
+    candidate_skills: list[str] = Query(default_factory=list),
+    target_salary: str = Query(""),
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> NegotiationResponse:
+    job = await _get_job(db, job_id)
+    result = await _enhancer.negotiation_script(job, candidate_skills, target_salary)
+    return NegotiationResponse(data=result)

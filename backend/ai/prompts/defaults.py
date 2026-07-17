@@ -293,5 +293,111 @@ Current Resume Skills: $current_skills""",
 )
 
 
+# Career — company deep research
+_prompts.add_version(
+    "career.company_research",
+    """Research this company for a job seeker. Return ONLY valid JSON.
+Keys: ai_strategy (company AI/tech direction), engineering_culture,
+recent_moves (funding, layoffs, expansions), interview_tips (2-3 tips),
+red_flags (any concerns), why_interested (why someone would want to work here).
+
+Company: $company_name""",
+    description="Deep company research for job seekers",
+    tags=["career", "research", "json"],
+)
+
+# Career — contact discovery
+_prompts.add_version(
+    "career.contact_discovery",
+    """For this company and role, suggest who to contact on LinkedIn.
+Return ONLY valid JSON.
+Keys: likely_roles (titles to search for, e.g. 'Engineering Manager'),
+linkedin_search_tips (search queries to use),
+approach_angle (why you'd be valuable to them).
+
+Company: $company_name
+Job Title: $job_title""",
+    description="Discover hiring managers and contacts",
+    tags=["career", "contacts", "json"],
+)
+
+# Career — LinkedIn message draft
+_prompts.add_version(
+    "career.linkedin_message",
+    """Write a concise LinkedIn connection message (≤300 characters).
+Be genuine and professional. Mention specific interest in the company.
+
+Company: $company
+Role: $role
+Contact type: $contact_type
+Context: $context""",
+    description="Draft LinkedIn outreach messages",
+    tags=["career", "linkedin"],
+)
+
+# Career — application email
+_prompts.add_version(
+    "career.app_email",
+    """Write a professional application email.
+First line must be 'Subject: [subject line]'.
+Rest is the email body.
+
+Company: $company
+Job Title: $job_title
+Email Type: $email_type (cold, referral, follow_up)
+Candidate Profile: $candidate_profile
+Job Description: $job_description""",
+    description="Draft application emails",
+    tags=["career", "email"],
+)
+
+# Career — interview story bank
+_prompts.add_version(
+    "career.story_bank",
+    """Based on this candidate profile and job, generate 4 STAR (Situation-Task-Action-Result) stories.
+Return ONLY valid JSON. Key: stories (list of {title, situation, task, action, result, reflection, applicable_scenarios}).
+
+Candidate: $candidate_profile
+Job Title: $job_title
+Company: $company""",
+    description="Generate STAR interview story bank",
+    tags=["career", "interview", "stories", "json"],
+)
+
+# Career — scam/ghost job detection
+_prompts.add_version(
+    "career.scam_check",
+    """Evaluate this job posting for legitimacy. Return ONLY valid JSON.
+Keys: risk_score (0.0-1.0, higher = more likely scam),
+red_flags (list of warning signs),
+legitimacy_indicators (positive signals),
+verdict (LEGITIMATE, SUSPICIOUS, or SCAM),
+recommendation (one sentence).
+
+Job Title: $job_title
+Company: $company
+Description: $description""",
+    description="Detect scam and ghost job postings",
+    tags=["career", "safety", "json"],
+)
+
+# Career — negotiation scripts
+_prompts.add_version(
+    "career.negotiation",
+    """Create a salary negotiation strategy. Return ONLY valid JSON.
+Keys: talking_points (list of key arguments),
+scripts (list of {scenario, what_to_say, expected_response, counter}),
+market_data_tips (where to find comp data),
+leverage_angles (ways to strengthen your position).
+
+Role: $job_title
+Company: $company
+Skills: $skills
+Target Salary: $target_salary""",
+    description="Generate salary negotiation scripts",
+    tags=["career", "negotiation", "json"],
+)
+
+
 def get_prompt_registry() -> PromptRegistry:
     return _prompts
