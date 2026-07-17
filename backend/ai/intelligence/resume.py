@@ -45,7 +45,7 @@ SECTION_PATTERNS = {
 }
 
 JOB_ENTRY_PATTERN = re.compile(
-    r"(?P<title>[A-Z][\w\s/&#+-]+?)\s+at\s+(?P<company>[A-Z][\w\s.&()-]+?)\s*"
+    r"^[ \t]*(?P<title>[A-Z][\w\s/&#+-]{5,60}?)\s+at\s+(?P<company>[A-Z][\w\s.&()'-]+?)\s*"
     r"(?P<dates>\(?\d{4}\s*(?:-|to)\s*(?:\d{4}|Present|Current)\)?)",
     re.MULTILINE,
 )
