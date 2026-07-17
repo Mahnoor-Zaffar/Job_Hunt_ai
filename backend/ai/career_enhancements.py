@@ -15,6 +15,37 @@ class CareerEnhancer:
     def __init__(self, ai_service: AIService | None = None) -> None:
         self._ai = ai_service or AIService()
 
+    async def detect_archetype(self, job: Job) -> dict[str, Any]:
+        return await self._ai.generate_json(
+            "career.archetype",
+            {
+                "job_title": job.title,
+                "company": job.company,
+                "description": (job.description or "")[:3000],
+                "skills": ", ".join(job.skills) if job.skills else "",
+            },
+            model="anthropic/claude-3.5-sonnet",
+            required_keys=["archetype", "confidence", "sub_archetype"],
+        )
+
+    async def full_evaluation(
+        self, job: Job, cv_text: str, candidate_profile: str = ""
+    ) -> dict[str, Any]:
+        return await self._ai.generate_json(
+            "career.full_eval",
+            {
+                "job_title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "description": (job.description or "")[:4000],
+                "skills": ", ".join(job.skills) if job.skills else "",
+                "cv_text": cv_text[:4000],
+                "candidate_profile": candidate_profile[:2000],
+            },
+            model="anthropic/claude-3.5-sonnet",
+            required_keys=["overall_score", "block_a", "block_b", "block_c", "block_d", "block_e", "block_f"],
+        )
+
     async def company_deep_research(self, company_name: str) -> dict[str, Any]:
         return await self._ai.generate_json(
             "career.company_research",

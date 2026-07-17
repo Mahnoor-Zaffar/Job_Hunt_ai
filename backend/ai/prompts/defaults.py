@@ -399,5 +399,46 @@ Target Salary: $target_salary""",
 )
 
 
+# Career — archetype detection
+_prompts.add_version(
+    "career.archetype",
+    """Classify this job into a primary archetype. Return ONLY valid JSON.
+Keys: archetype (one of: LLMOps, Agentic_AI, Product_Manager, Solutions_Architect,
+Frontend_Engineer, Data_Engineer, Platform_Engineer, ML_Engineer, DevOps,
+Security, Full_Stack, Mobile, QA, Management, Transformation, Other),
+confidence (0.0-1.0), sub_archetype, reasoning (one sentence).
+
+Job Title: $job_title
+Company: $company
+Description: $description
+Skills: $skills""",
+    description="Classify job into archetype category",
+    tags=["career", "classification", "json"],
+)
+
+# Career — full A-F evaluation report
+_prompts.add_version(
+    "career.full_eval",
+    """Evaluate this job against the candidate CV. Return ONLY valid JSON.
+Keys:
+- overall_score: 1.0-5.0
+- block_a (Role Match): {score, summary, strengths, gaps}
+- block_b (CV Alignment): {score, matching_experience, missing_experience, recommendations}
+- block_c (Level Strategy): {score, current_level, target_level, promotion_path, timeline}
+- block_d (Comp Research): {score, market_range, suggested_range, negotiation_levers}
+- block_e (Personalization): {score, resume_adaptations, cover_letter_angles, interview_emphasis}
+- block_f (Interview Prep): {score, technical_areas, behavioral_stories, questions_to_prepare}
+- verdict: STRONG_MATCH / GOOD_FIT / REACH / SKIP
+- recommendation: one paragraph
+
+Job Title: $job_title | Company: $company | Location: $location
+Description: $description | Skills: $skills
+CV: $cv_text
+Candidate Profile: $candidate_profile""",
+    description="Full 6-block A-F evaluation report",
+    tags=["career", "evaluation", "json"],
+)
+
+
 def get_prompt_registry() -> PromptRegistry:
     return _prompts

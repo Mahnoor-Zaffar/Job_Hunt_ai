@@ -1,17 +1,144 @@
-# Companies tracked by the ATS adapters.
+# Pre-configured companies for the ATS scanner.
+# Adding a company requires NO code changes — just add an entry below.
 #
-# Adding a new company requires NO code changes — just add an entry below
-# and the ATS orchestrator will pick it up on the next scraping cycle.
-#
-# Fields
+# Fields:
 #   name:         Display name of the company
-#   platform:     ATS platform — one of greenhouse, lever, ashby, workable
+#   platform:     ATS platform — greenhouse, lever, ashby, workable, or custom
 #   careers_url:  Base URL for the company's public job board or API endpoint
-#   api_key:      Required for Ashby; optional for Workable
-#   locations:    Optional filter — only scrape jobs in these cities (PK only)
+#   api_key:      Required for Ashby
 #   skip:         Set to true to pause scraping for this company
+#   archetype:    Company category (AI_Labs, Voice_AI, AI_Platforms, etc.)
 
 companies:
+  # AI Labs
+  - name: Anthropic
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/anthropic
+    archetype: AI_Labs
+
+  - name: OpenAI
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/openai
+    archetype: AI_Labs
+
+  - name: Mistral
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/mistralai
+    archetype: AI_Labs
+
+  - name: Cohere
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/cohere
+    archetype: AI_Labs
+
+  - name: LangChain
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/langchain
+    archetype: AI_Labs
+
+  - name: Pinecone
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/pinecone
+    archetype: AI_Labs
+
+  # Voice AI
+  - name: ElevenLabs
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/elevenlabs
+    archetype: Voice_AI
+
+  - name: Hume AI
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/humeai
+    archetype: Voice_AI
+
+  - name: Deepgram
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/deepgram
+    archetype: Voice_AI
+
+  # AI Platforms
+  - name: Retool
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/retool
+    archetype: AI_Platforms
+
+  - name: Airtable
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/airtable
+    archetype: AI_Platforms
+
+  - name: Vercel
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/vercel
+    archetype: AI_Platforms
+
+  - name: Temporal
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/temporal
+    archetype: AI_Platforms
+
+  # AI Infrastructure
+  - name: Weights & Biases
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/wandb
+    archetype: AI_Platforms
+
+  - name: Langfuse
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/langfuse
+    archetype: AI_Platforms
+
+  # Automation
+  - name: n8n
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/n8n
+    archetype: Automation
+
+  - name: Zapier
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/zapier
+    archetype: Automation
+
+  # Contact Center / CX AI
+  - name: Ada
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/ada
+    archetype: Contact_Center_AI
+
+  - name: LivePerson
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/liveperson
+    archetype: Contact_Center_AI
+
+  # Enterprise
+  - name: Salesforce
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/salesforce
+    archetype: Enterprise
+
+  - name: Twilio
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/twilio
+    archetype: Enterprise
+
+  - name: Gong
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/gong
+    archetype: Enterprise
+
+  # European
+  - name: Factorial
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/factorial
+    archetype: European
+
+  - name: Attio
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/attio
+    archetype: European
+
+  # Pakistan / Local
   - name: Motive
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/motive
@@ -27,10 +154,6 @@ companies:
   - name: Devsinc
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/devsinc
-
-  - name: Airbyte
-    platform: lever
-    careers_url: https://api.lever.co/v0/postings/airbyte
 
   - name: Careem
     platform: greenhouse

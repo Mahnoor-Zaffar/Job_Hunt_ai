@@ -380,3 +380,39 @@ async def negotiation(
     job = await _get_job(db, job_id)
     result = await _enhancer.negotiation_script(job, candidate_skills, target_salary)
     return NegotiationResponse(data=result)
+
+
+class ArchetypeResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class EvalRequest(BaseSchema):
+    job_id: str
+    cv_text: str
+    candidate_profile: str = ""
+
+
+class EvalResponse(BaseSchema):
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.get("/archetype/{job_id}", response_model=ArchetypeResponse)
+async def detect_archetype(
+    job_id: str,
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> ArchetypeResponse:
+    job = await _get_job(db, job_id)
+    result = await _enhancer.detect_archetype(job)
+    return ArchetypeResponse(data=result)
+
+
+@router.post("/evaluate", response_model=EvalResponse)
+async def full_evaluation(
+    body: EvalRequest,
+    _need_key: None = _need_key,
+    db: AsyncSession = Depends(get_db),
+) -> EvalResponse:
+    job = await _get_job(db, body.job_id)
+    result = await _enhancer.full_evaluation(job, body.cv_text, body.candidate_profile)
+    return EvalResponse(data=result)
