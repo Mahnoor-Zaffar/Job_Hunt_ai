@@ -1,4 +1,3 @@
-import { BarChart, StatPill } from "@/components/charts";
 import { Card, StatCard } from "@/components/ui";
 import { RunScrapersButton } from "@/components/run-scrapers";
 import { ScraperStatusPanel } from "@/components/scraper-status";
@@ -17,112 +16,105 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data?.stats?.last_scrape
-              ? `Last scrape: ${new Date(data.stats.last_scrape).toLocaleString()}`
-              : "No scrapes yet"}
+              ? `Last scrape ${new Date(data.stats.last_scrape).toLocaleString()}`
+              : "No data yet"}
           </p>
         </div>
         <RunScrapersButton />
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Jobs" value={data?.stats?.total_jobs ?? 0} color="blue" />
-        <StatCard label="Active Jobs" value={data?.stats?.active_jobs ?? 0} color="green" />
-        <StatCard label="Submitted" value={data?.stats?.applications_submitted ?? 0} color="purple" />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Total Jobs" value={data?.stats?.total_jobs ?? 0} color="indigo" />
+        <StatCard label="Active" value={data?.stats?.active_jobs ?? 0} color="emerald" />
+        <StatCard label="Applied" value={data?.stats?.applications_submitted ?? 0} color="violet" />
         <StatCard label="Interviews" value={data?.stats?.interviews_scheduled ?? 0} color="amber" />
       </div>
 
-      {/* Source breakdown quick pills */}
-      {data?.jobs_by_source?.length ? (
-        <div className="flex gap-2 flex-wrap">
-          {data.jobs_by_source.map((s: { source: string; count: number }, i: number) => (
-            <StatPill
-              key={s.source}
-              label={s.source}
-              count={s.count}
-              color={["blue", "purple", "green", "amber", "red"][i % 5]}
-            />
-          ))}
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-6">
+          <Card>
+            <h3 className="text-sm font-medium mb-4">Jobs by Source</h3>
+            {data?.jobs_by_source?.length ? (
+              <div className="space-y-3">
+                {data.jobs_by_source.map((s: { source: string; count: number }) => {
+                  const max = Math.max(...data.jobs_by_source.map((x: { count: number }) => x.count), 1);
+                  const pct = (s.count / max) * 100;
+                  return (
+                    <div key={s.source} className="flex items-center gap-3">
+                      <span className="w-24 text-xs text-muted-foreground capitalize truncate">{s.source}</span>
+                      <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-medium tabular-nums w-8 text-right">{s.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-4 text-center">No data yet</p>
+            )}
+          </Card>
+
+          <Card>
+            <h3 className="text-sm font-medium mb-4">Top Technologies</h3>
+            {data?.top_technologies?.length ? (
+              <div className="space-y-3">
+                {data.top_technologies.slice(0, 8).map((s: { source: string; count: number }) => {
+                  const max = Math.max(...data.top_technologies.slice(0, 8).map((x: { count: number }) => x.count), 1);
+                  const pct = (s.count / max) * 100;
+                  return (
+                    <div key={s.source} className="flex items-center gap-3">
+                      <span className="w-24 text-xs text-muted-foreground truncate">{s.source}</span>
+                      <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-medium tabular-nums w-8 text-right">{s.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-4 text-center">No data yet</p>
+            )}
+          </Card>
         </div>
-      ) : null}
 
-      {/* Charts Row 1 */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card title="Jobs by Source">
-          {data?.jobs_by_source?.length ? (
-            <BarChart data={data.jobs_by_source.map((s: { source: string; count: number }) => ({ label: s.source, value: s.count }))} />
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">No data yet</p>
-          )}
-        </Card>
+        <div className="space-y-6">
+          {data?.jobs_by_location?.length ? (
+            <Card>
+              <h3 className="text-sm font-medium mb-4">Locations</h3>
+              <LocationCards data={data.jobs_by_location} />
+            </Card>
+          ) : null}
 
-        <Card title="Top Technologies">
-          {data?.top_technologies?.length ? (
-            <BarChart data={data.top_technologies.slice(0, 8).map((s: { source: string; count: number }) => ({ label: s.source, value: s.count }))} />
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">No data yet</p>
-          )}
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {data?.jobs_by_location?.length ? (
-          <Card title="Jobs by Location">
-            <LocationCards data={data.jobs_by_location} />
+          <Card>
+            <h3 className="text-sm font-medium mb-4">Scrapers</h3>
+            <ScraperStatusPanel />
           </Card>
-        ) : null}
 
-        {data?.applications_by_status?.length ? (
-          <Card title="Applications by Status">
-            <BarChart data={data.applications_by_status.map((s: { source: string; count: number }) => ({ label: s.source || "none", value: s.count }))} />
+          <Card>
+            <h3 className="text-sm font-medium mb-3">Quick Links</h3>
+            <div className="space-y-1">
+              {[
+                { href: "/jobs", label: "Browse all jobs" },
+                { href: "/jobs?q=backend", label: "Backend jobs" },
+                { href: "/jobs?q=frontend", label: "Frontend jobs" },
+                { href: "/resume", label: "Upload resume" },
+                { href: "/companies", label: "Companies" },
+              ].map((link) => (
+                <a key={link.href} href={link.href} className="block text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 -mx-2 rounded hover:bg-secondary/50 transition-colors">
+                  {link.label}
+                </a>
+              ))}
+            </div>
           </Card>
-        ) : null}
-      </div>
-
-      {/* Scraper Status */}
-      <Card title="Scraper Status">
-        <ScraperStatusPanel />
-      </Card>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <ActionCard icon="🔍" title="Browse Jobs" href="/jobs" primary />
-          <ActionCard icon="👨‍💻" title="Backend Jobs" href="/jobs?q=backend" />
-          <ActionCard icon="🎨" title="Frontend Jobs" href="/jobs?q=frontend" />
-          <ActionCard icon="🤖" title="AI Jobs" href="/jobs?q=ai" />
-          <ActionCard icon="📄" title="Upload Resume" href="/resume" />
-          <ActionCard icon="🏢" title="Companies" href="/companies" />
-          <ActionCard icon="📊" title="API Docs" href="http://localhost:8000/docs" />
-          <ActionCard icon="🧪" title="AI Evaluation" href="http://localhost:8000/api/v1/ai/evaluate" />
         </div>
       </div>
     </div>
-  );
-}
-
-function ActionCard({ icon, title, href, primary = false }: { icon: string; title: string; href: string; primary?: boolean }) {
-  return (
-    <a
-      href={href}
-      target={href.startsWith("http") ? "_blank" : undefined}
-      rel={href.startsWith("http") ? "noopener" : undefined}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-        primary
-          ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-          : "bg-muted hover:bg-muted/70 border border-transparent hover:border-border"
-      }`}
-    >
-      <span className="text-lg">{icon}</span>
-      <span className="text-sm font-medium">{title}</span>
-    </a>
   );
 }

@@ -7,26 +7,26 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = saved === "dark" || (!saved && prefersDark);
+    const prefers = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = saved === "dark" || (!saved && prefers);
     setDark(isDark);
-    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", isDark);
   }, []);
 
   function toggle() {
     const next = !dark;
     setDark(next);
     localStorage.setItem("theme", next ? "dark" : "light");
-    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
   }
 
   return (
     <button
       onClick={toggle}
-      className="w-8 h-8 flex items-center justify-center rounded text-sm hover:bg-muted transition-colors"
+      className="w-7 h-7 flex items-center justify-center rounded-md text-xs hover:bg-secondary transition-colors"
       title={dark ? "Light mode" : "Dark mode"}
     >
-      {dark ? "☀️" : "🌙"}
+      {dark ? "☀" : "☾"}
     </button>
   );
 }
