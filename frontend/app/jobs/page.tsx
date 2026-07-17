@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui";
+import { QuickApplyButton } from "@/components/quick-apply";
 
 const PER_PAGE = 20;
 
@@ -188,6 +189,7 @@ export default async function JobsPage({
                     >
                       View Details →
                     </a>
+                    <QuickApplyButton jobId={String(job.id)} />
                     {job.apply_url ? (
                       <a
                         href={String(job.apply_url)}
