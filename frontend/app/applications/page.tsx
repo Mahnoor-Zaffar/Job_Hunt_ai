@@ -2,93 +2,61 @@ import { Card } from "@/components/ui";
 
 async function getApplications() {
   try {
-    const res = await fetch(
-      "http://localhost:8000/api/v1/applications?user_id=00000000-0000-0000-0000-000000000001&per_page=20",
-      { next: { revalidate: 30 } }
-    );
+    const res = await fetch("http://localhost:8000/api/v1/applications?user_id=00000000-0000-0000-0000-000000000001&per_page=20", { next: { revalidate: 30 } });
     if (!res.ok) return { items: [] };
     return await res.json();
   } catch { return { items: [] }; }
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
-  submitted: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  under_review: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  interview: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  offer: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-  withdrawn: "bg-gray-100 text-gray-500",
+  draft: "text-muted-foreground bg-secondary",
+  submitted: "text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400",
+  under_review: "text-violet-600 bg-violet-50 dark:bg-violet-950 dark:text-violet-400",
+  interview: "text-amber-600 bg-amber-50 dark:bg-amber-950 dark:text-amber-400",
+  offer: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400",
+  rejected: "text-rose-600 bg-rose-50 dark:bg-rose-950 dark:text-rose-400",
 };
 
 export default async function ApplicationsPage() {
   const data = await getApplications();
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Applications</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
+        <p className="text-sm text-muted-foreground mt-1">Track your job applications through the pipeline</p>
+      </div>
 
       {data.items.length === 0 ? (
         <Card>
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            No applications yet. Browse jobs and click "Quick Apply" to start tracking.
-          </p>
+          <div className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">No applications yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Browse jobs and click "Quick Apply" to start tracking</p>
+          </div>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="rounded-lg border">
           {data.items.map((app: Record<string, unknown>) => (
-            <Card key={String(app.id)}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">
-                    <a href={`/jobs/${String(app.job_id)}`} className="hover:text-primary transition-colors">
-                      Application #{String(app.id).slice(0, 8)}
-                    </a>
-                  </h3>
-                  <div className="flex gap-2 mt-1 items-center">
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider ${STATUS_COLORS[String(app.status)] || STATUS_COLORS.draft}`}
-                    >
-                      {String(app.status).replace("_", " ")}
-                    </span>
-                    {app.applied_at && (
-                      <span className="text-xs text-muted-foreground">
-                        Applied: {new Date(String(app.applied_at)).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  {app.notes && (
-                    <p className="text-xs text-muted-foreground mt-1">{String(app.notes)}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  {app.match_score ? (
-                    <span className="text-xs font-medium">
-                      {(Number(app.match_score) * 100).toFixed(0)}% match
-                    </span>
-                  ) : null}
-                  <a href={`/jobs/${String(app.job_id)}`} className="text-xs text-primary hover:underline">
-                    View Job →
-                  </a>
-                  <div className="flex flex-col gap-1">
-                    <a
-                      href={`http://localhost:8000/api/v1/applications/${String(app.id)}/status?status=submitted`}
-                      target="_blank"
-                      className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-200"
-                    >
-                      Mark Submitted
-                    </a>
-                    <a
-                      href={`http://localhost:8000/api/v1/applications/${String(app.id)}/status?status=interview`}
-                      target="_blank"
-                      className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded hover:bg-amber-200"
-                    >
-                      Mark Interview
-                    </a>
-                  </div>
+            <div key={String(app.id)} className="flex items-center gap-4 px-5 py-3 border-b last:border-0 hover:bg-secondary/30 transition-colors">
+              <div className="flex-1 min-w-0">
+                <a href={`/jobs/${String(app.job_id)}`} className="text-sm font-medium hover:text-primary transition-colors">
+                  Application #{String(app.id).slice(0, 8)}
+                </a>
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                  {app.applied_at && <span>{new Date(String(app.applied_at)).toLocaleDateString()}</span>}
+                  {app.notes && <span>· {String(app.notes).slice(0, 60)}</span>}
                 </div>
               </div>
-            </Card>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${STATUS_COLORS[String(app.status)] || STATUS_COLORS.draft}`}>
+                  {String(app.status).replace("_", " ")}
+                </span>
+                {app.match_score ? (
+                  <span className="text-xs font-medium">{(Number(app.match_score) * 100).toFixed(0)}%</span>
+                ) : null}
+                <a href={`/jobs/${String(app.job_id)}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">View →</a>
+              </div>
+            </div>
           ))}
         </div>
       )}
