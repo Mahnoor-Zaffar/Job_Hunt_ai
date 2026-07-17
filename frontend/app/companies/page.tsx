@@ -29,7 +29,7 @@ export default async function CompaniesPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <a
-                      href={`/jobs?company=${encodeURIComponent(String(c.name))}`}
+                      href={`/companies/${encodeURIComponent(String(c.id))}`}
                       className="font-semibold hover:text-primary transition-colors"
                     >
                       {String(c.name)}

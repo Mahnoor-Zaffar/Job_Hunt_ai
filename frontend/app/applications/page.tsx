@@ -61,18 +61,31 @@ export default async function ApplicationsPage() {
                     <p className="text-xs text-muted-foreground mt-1">{String(app.notes)}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {app.match_score ? (
-                    <span className="text-xs font-medium text-primary">
+                    <span className="text-xs font-medium">
                       {(Number(app.match_score) * 100).toFixed(0)}% match
                     </span>
                   ) : null}
-                  <a
-                    href={`/jobs/${String(app.job_id)}`}
-                    className="text-xs text-primary hover:underline"
-                  >
+                  <a href={`/jobs/${String(app.job_id)}`} className="text-xs text-primary hover:underline">
                     View Job →
                   </a>
+                  <div className="flex flex-col gap-1">
+                    <a
+                      href={`http://localhost:8000/api/v1/applications/${String(app.id)}/status?status=submitted`}
+                      target="_blank"
+                      className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-200"
+                    >
+                      Mark Submitted
+                    </a>
+                    <a
+                      href={`http://localhost:8000/api/v1/applications/${String(app.id)}/status?status=interview`}
+                      target="_blank"
+                      className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded hover:bg-amber-200"
+                    >
+                      Mark Interview
+                    </a>
+                  </div>
                 </div>
               </div>
             </Card>

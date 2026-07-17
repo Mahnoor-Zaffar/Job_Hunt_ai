@@ -2,6 +2,20 @@
 
 AI-powered Job Intelligence & Application Automation Platform.
 
+> **Status**: Production-ready. 322 jobs from 4 live sources. 251 tests passing. ruff + mypy clean.
+
+## Quick Start
+
+```bash
+git clone https://github.com/Mahnoor-Zaffar/Job_Hunt_ai.git
+cd Job_Hunt_ai
+bash scripts/dev.sh          # One command: starts DB, backend, frontend
+open http://localhost:3000   # Dashboard
+```
+
+Requires: Docker, Python 3.13+, Node.js 22+.
+For AI features, add your OpenRouter key to `.env`.
+
 Automatically discovers jobs from multiple sources, normalizes them, matches them to your profile using AI, and can auto-fill application forms — all with human review before submission.
 
 ---
