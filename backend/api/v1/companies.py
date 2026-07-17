@@ -25,6 +25,7 @@ class CompanyResponse(BaseSchema):
     size: str | None = None
     headquarters: str | None = None
     is_active: bool = True
+    job_count: int = 0
 
 
 class CompanyListResponse(BaseSchema):
@@ -96,8 +97,23 @@ async def list_companies(
         items = await repo.get_active(skip=(page - 1) * per_page, limit=per_page)
         total = await repo.count()
 
+    from sqlalchemy import func
+    from sqlalchemy import select as sa_select
+
+    from backend.models.job import Job
+
+    cnt_query = sa_select(Job.company, func.count()).group_by(Job.company)
+    cnt_result = await db.execute(cnt_query)
+    job_counts: dict[str, int] = {str(r[0]): r[1] for r in cnt_result if r[0] is not None}
+
+    enriched = []
+    for c in items:
+        resp = _company_to_response(c)
+        resp.job_count = job_counts.get(c.name, 0)
+        enriched.append(resp)
+
     return CompanyListResponse(
-        items=[_company_to_response(c) for c in items],
+        items=enriched,
         total=total,
         page=page,
         per_page=per_page,

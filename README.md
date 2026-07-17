@@ -1,441 +1,157 @@
-# 🚀 Job Hunting
+# Job Hunting AI
 
-> **An AI-powered Job Intelligence & Application Automation Platform.**
+AI-powered Job Intelligence & Application Automation Platform.
 
-Job Hunting is a modern career automation platform that discovers, filters, ranks, and assists with job applications across multiple job boards. It is designed to eliminate repetitive manual work by continuously monitoring job sources, intelligently matching opportunities to a candidate's profile, generating tailored application materials, and automating the application workflow where appropriate.
-
-The initial release focuses on **Software Engineering** positions in:
-
-* 🇵🇰 Islamabad
-* 🇵🇰 Rawalpindi
-* 🇵🇰 Lahore
-* 🌍 Global Remote Jobs
+Automatically discovers jobs from multiple sources, normalizes them, matches them to your profile using AI, and can auto-fill application forms — all with human review before submission.
 
 ---
 
-# Vision
-
-Finding the right job should not require checking dozens of websites every day.
-
-Job Hunting acts as a personal career assistant that continuously searches the internet, discovers new opportunities, evaluates their relevance, notifies you immediately, and helps prepare and submit high-quality applications.
-
-The long-term goal is to build a complete **Career Operating System** for software professionals.
-
----
-
-# Objectives
-
-* Aggregate jobs from multiple sources
-* Normalize and deduplicate listings
-* Filter jobs based on user preferences
-* Rank opportunities using AI
-* Track companies and applications
-* Generate optimized resumes
-* Generate personalized cover letters
-* Automate repetitive application workflows
-* Provide analytics and career insights
-
----
-
-# Core Features
-
-## Job Discovery
-
-* Multi-source job aggregation
-* Continuous background scraping
-* Company career page monitoring
-* Pakistan-specific job boards
-* Global remote job boards
-
----
-
-## Smart Filtering
-
-* Islamabad jobs
-* Rawalpindi jobs
-* Lahore jobs
-* Remote worldwide positions
-* Keyword filtering
-* Experience level filtering
-* Employment type filtering
-
----
-
-## AI Matching
-
-* Resume parsing
-* Semantic job matching
-* Resume scoring
-* Skill gap analysis
-* Personalized job recommendations
-
----
-
-## Resume Assistant
-
-* Resume parsing
-* Resume optimization
-* Multiple resume profiles
-* AI-powered resume tailoring
-
----
-
-## Cover Letter Generator
-
-Generate company-specific cover letters using:
-
-* Resume
-* Job description
-* Company information
-
----
-
-## Interview Assistant
-
-Generate:
-
-* Technical interview questions
-* Behavioral interview questions
-* Company research
-* Suggested answers
-* Preparation checklists
-
----
-
-## Auto Apply Engine
-
-Supported ATS platforms (planned):
-
-* Greenhouse
-* Lever
-* Ashby
-* Workable
-* Generic application forms
-
-Capabilities include:
-
-* Form detection
-* Automatic field mapping
-* Resume upload
-* Cover letter upload
-* AI-assisted question answering
-* Human review mode
-* Optional automatic submission
-
----
-
-## Company Watchlists
-
-Monitor selected companies and receive instant notifications when new positions are published.
-
----
-
-## Notifications
-
-* Telegram
-* Email
-* Discord (planned)
-
----
-
-## Dashboard
-
-* Job search
-* Advanced filtering
-* Saved jobs
-* Application tracking
-* Resume management
-* Analytics
-* Hiring trends
-
----
-
-# Project Architecture
+## Architecture
 
 ```text
-                          Next.js Dashboard
-                                  │
-                                  ▼
-                           FastAPI REST API
-                                  │
-        ┌─────────────────────────┼─────────────────────────┐
-        │                         │                         │
-        ▼                         ▼                         ▼
- PostgreSQL                  Redis                  OpenRouter
-        │                         │
-        └──────────────┬──────────┘
-                       ▼
-                Celery Workers
+┌─────────────────────────────────────────────────────────┐
+│                    Next.js Dashboard                     │
+│     Jobs · Companies · Applications · Resume · Settings  │
+└──────────────────────┬──────────────────────────────────┘
+                       │ REST API
+┌──────────────────────▼──────────────────────────────────┐
+│                   FastAPI Backend                        │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │
+│  │ Scrapers │ │ AI Engine│ │Automation│ │  Services   │ │
+│  │ 4 sources│ │ OpenRouter│ │ Playwright│ │ Jobs/Co/App│ │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────┘ │
+└──────────────────────┬──────────────────────────────────┘
                        │
-                       ▼
-             Scraper Orchestrator
-                       │
- ┌──────────────┬──────────────┬──────────────┐
- ▼              ▼              ▼              ▼
-Rozee      Mustakbil     BrightSpyre     RemoteOK
- │
- ▼
-Greenhouse
- │
- ▼
-Lever
- │
- ▼
-Ashby
- │
- ▼
-Workable
-                       │
-                       ▼
-              Normalization Pipeline
-                       │
-                       ▼
-              Duplicate Detection
-                       │
-                       ▼
-                 PostgreSQL Storage
-                       │
-                       ▼
-                  AI Matching Engine
-                       │
-                       ▼
-              Notification Service
+┌──────────────────────▼──────────────────────────────────┐
+│              PostgreSQL · Redis · Celery                │
+└─────────────────────────────────────────────────────────┘
 ```
 
----
+## Tech Stack
 
-# Technology Stack
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.13, FastAPI, SQLAlchemy 2.x, Pydantic v2 |
+| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS |
+| **Database** | PostgreSQL 16, Redis 7 |
+| **AI** | OpenRouter (Claude 3.5, GPT-4o, Gemini, DeepSeek), sentence-transformers |
+| **Scraping** | httpx, Playwright, Selectolax |
+| **Queue** | Celery + Redis |
+| **Infra** | Docker Compose, uv, Ruff, mypy |
 
-## Backend
+## Features
 
-* Python 3.13+
-* FastAPI
-* SQLAlchemy 2.x
-* Alembic
-* Pydantic v2
+### Job Discovery
+- 4 live scrapers: **RemoteOK**, **Indeed**, **Mustakbil**, **BrightSpyre**
+- Auto-scheduled via Celery Beat every 30 minutes
+- Company records auto-created from scraped jobs
+- 322+ jobs from 4 sources (demo instance)
 
----
+### AI Career Assistant
+Powered by OpenRouter with Claude 3.5 Sonnet:
+- **Job summaries** — AI-generated bullet summaries
+- **Cover letters** — Tailored to job + company + your profile
+- **Interview prep** — Technical, behavioral, company questions with answers
+- **Resume optimization** — Rewrite bullets, suggest keywords
+- **Skill gap analysis** — Missing skills + learning roadmap
+- **21 versioned prompts** in a centralized registry
 
-## Database
+### Intelligent Matching
+- **9-factor deterministic scoring**: skills (30%), experience (15%), technologies (15%), location (10%), employment (8%), salary (8%), seniority (7%), remote (5%), company (2%)
+- Semantic similarity via embeddings (sentence-transformers)
 
-* PostgreSQL
-* Redis
-* pgvector (planned)
+### Resume Manager
+- Upload PDF/DOCX/TXT → auto-parsed into structured data
+- Extract: skills, experience, education, certifications, projects
+- Multiple resumes, version tracking
 
----
+### Dashboard
+- Real-time job stats with animated bar charts
+- Source breakdown, top technologies, location distribution
+- Scraper status panel with live refresh
+- Dark mode toggle
 
-## Scraping
+### Applications
+- Track applications through lifecycle: draft → submitted → interview → offer → rejected
+- Follow-up reminders, timeline view
+- AI-assisted form completion
 
-* Playwright
-* httpx
-* Selectolax
-* BeautifulSoup4
+### Browser Automation Platform
+- Workflow engine with reusable steps (navigate, fill, upload, submit)
+- 4 ATS adapters: Greenhouse, Lever, Ashby, Workable
+- Intelligent form field mapping (80+ aliases, 18 categories)
+- Session recording + audit trail
 
----
+## Quick Start
 
-## AI
+```bash
+# 1. Clone
+git clone https://github.com/Mahnoor-Zaffar/Job_Hunt_ai.git
+cd Job_Hunt_ai
 
-* OpenRouter
-* Sentence Transformers
-* Local Embedding Models
-* PyMuPDF
+# 2. One-command startup
+bash scripts/dev.sh
 
----
-
-## Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* shadcn/ui
-
----
-
-## Background Processing
-
-* Celery
-* Celery Beat
-* Redis
-
----
-
-## DevOps
-
-* Docker
-* Docker Compose
-* GitHub Actions
-
----
-
-# Repository Structure
-
-```text
-job_hunting/
-
-├── backend/
-│
-├── frontend/
-│
-├── workers/
-│
-├── scrapers/
-│
-├── ai/
-│
-├── database/
-│
-├── docs/
-│
-├── docker/
-│
-├── scripts/
-│
-├── tests/
-│
-└── .github/
+# 3. Open
+open http://localhost:3000
 ```
 
----
+Then click **"Run All Scrapers"** on the dashboard to pull fresh jobs.
 
-# Development Roadmap
+## API Endpoints (50+)
 
-## Phase 1 — Foundation
+| Group | Key Endpoints |
+|---|---|
+| Jobs | `GET /jobs` (18 filters), `GET /jobs/{id}`, `GET /jobs/{id}/similar` |
+| Companies | `GET /companies`, watchlist CRUD |
+| Applications | Full lifecycle: create, status, notes, timeline, reminders |
+| Resumes | Upload, parse, versions, set primary |
+| Scrapers | List, run, status |
+| Career AI | Summary, cover letter, interview prep, skill gap, salary guidance |
+| Analytics | Dashboard stats, source breakdown, trends, top tech |
+| AI Ops | Metrics, model inventory, prompt registry, evaluation suite |
 
-* Project setup
-* Docker
-* FastAPI
-* PostgreSQL
-* Alembic
-* Database schema
+Full docs at `http://localhost:8000/docs`
 
----
+## Quality
 
-## Phase 2 — Scraper Framework
+- **251 tests**, all passing
+- **ruff** lint + format clean
+- **mypy** strict mode on 188 source files
+- **CI/CD** via GitHub Actions (lint, type-check, unit tests, integration tests)
 
-* Browser manager
-* Base scraper interface
-* Scheduler
-* Data normalization
-* Validation pipeline
+## Project Structure
 
----
+```
+backend/
+├── ai/              AI platform (providers, prompts, matching, career assistant)
+├── api/v1/          REST API (50+ endpoints, 10 resource groups)
+├── automation/      Browser automation (workflows, ATS adapters, form engine)
+├── config/          Settings, constants
+├── database/        Engine, session, base
+├── events/          Event bus (publish/subscribe)
+├── models/          13 SQLAlchemy models
+├── notifications/   Telegram + Email notifiers
+├── repositories/    10 repositories
+├── scrapers/        4 job scrapers + framework (orchestrator, parser, normalizer)
+├── services/        8 business services
+├── storage/         File storage (Local + S3)
+├── utils/           Hashing, validation, metrics, logging
+└── workers/         Celery app + tasks
 
-## Phase 3 — Job Discovery
+frontend/
+├── app/             Next.js pages (dashboard, jobs, companies, resume, settings)
+└── components/      UI components (charts, cards, AI panel, theme toggle)
 
-Pakistan Sources
+docs/                Architecture, AI readiness, automation platform docs
+tests/               251 tests across all layers
+```
 
-* Rozee
-* Mustakbil
-* BrightSpyre
+## Environment
 
-Global Sources
+Copy `.env.example` to `.env` and set:
 
-* RemoteOK
-* Greenhouse
-* Lever
-* Ashby
-* Workable
-
----
-
-## Phase 4 — Search & Notifications
-
-* Search API
-* Filtering
-* Telegram notifications
-* Email notifications
-
----
-
-## Phase 5 — Dashboard
-
-* Job listing
-* Search
-* Analytics
-* Company tracking
-
----
-
-## Phase 6 — AI
-
-* Resume parser
-* Semantic search
-* Resume optimization
-* Cover letter generation
-* Interview preparation
-
----
-
-## Phase 7 — Auto Apply
-
-* Browser automation
-* ATS integrations
-* Form detection
-* Resume uploads
-* AI-assisted application answers
-* Human review mode
-
----
-
-## Phase 8 — Production
-
-* CI/CD
-* Monitoring
-* Deployment
-* Performance optimization
-
----
-
-# Design Principles
-
-* Modular architecture
-* Clean Architecture
-* SOLID principles
-* API-first development
-* Configuration over hardcoding
-* Strong typing
-* Testable components
-* Scalable services
-* Reusable scraper framework
-* AI as an enhancement, not a dependency
-
----
-
-# Current Status
-
-> **Development Phase:** Planning & Architecture
-
-The project is currently in the design phase. Core documentation, architecture, database design, and the scraper framework are being finalized before implementation begins.
-
----
-
-# Future Enhancements
-
-* Browser extension
-* LinkedIn profile optimizer
-* AI career coach
-* Salary prediction
-* Networking assistant
-* Mobile application
-* Multi-user SaaS platform
-* Team workspaces
-* Recruiter dashboard
-
----
-
-# License
-
-This project is intended as an educational and portfolio project. The license will be selected before the first public release.
-
----
-
-# Author
-
-**Noor**
-
-Backend Engineer • Python Developer • AI Enthusiast
-
----
-
-> **Mission:** Build a production-grade career automation platform that reduces the time spent searching, preparing, and applying for jobs while increasing application quality and interview conversion rates.
+```env
+OPENROUTER_API_KEY=sk-or-v1-...     # Required for AI features
+TELEGRAM_BOT_TOKEN=...               # Optional: Telegram notifications
+```
