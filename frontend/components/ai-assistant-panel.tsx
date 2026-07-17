@@ -31,31 +31,41 @@ export function AiAssistantPanel({ jobId }: { jobId: string }) {
     setLoading("cv");
     setError(null);
     setResults(null);
+
+    // Load saved resume data from localStorage
+    let resumeData: Record<string, unknown> = {};
+    try {
+      const saved = localStorage.getItem("parsedResume");
+      if (saved) resumeData = JSON.parse(saved);
+    } catch {}
+
+    if (!resumeData.full_name && !resumeData.skills) {
+      setError("Upload a resume first! Go to the Resume page, upload your CV, then come back.");
+      setLoading(null);
+      return;
+    }
+
     try {
       const res = await fetch("http://localhost:8000/api/v1/career/generate-cv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          full_name: "Your Name",
-          email: "you@example.com",
-          phone: "+1-555-0123",
-          location: "Islamabad, Pakistan",
-          summary: "Experienced software engineer with expertise in building scalable systems.",
-          skills: ["Python", "FastAPI", "Docker", "PostgreSQL", "React", "TypeScript"],
-          experience: [
-            { title: "Senior Engineer", company: "Acme Corp", start_date: "2022", end_date: "Present", highlights: ["Led migration to microservices", "Built real-time data pipeline"] },
-            { title: "Engineer", company: "StartupCo", start_date: "2020", end_date: "2022", highlights: ["Designed REST APIs", "Implemented CI/CD"] },
-          ],
-          education: [
-            { degree: "B.Sc.", field: "Computer Science", school: "NUST", year: "2020" },
-          ],
+          full_name: String(resumeData.full_name || "Your Name"),
+          email: String(resumeData.email || "you@example.com"),
+          phone: String(resumeData.phone || ""),
+          location: String(resumeData.location || ""),
+          summary: String(resumeData.summary || "Experienced software engineer."),
+          skills: (resumeData.skills as string[]) || [],
+          experience: (resumeData.experience as Array<Record<string, unknown>>) || [],
+          education: (resumeData.education as Array<Record<string, unknown>>) || [],
+          certifications: (resumeData.certifications as string[]) || [],
           job_id: jobId,
         }),
       });
       if (!res.ok) throw new Error("Failed to generate CV");
       const data = await res.json();
       window.open(`http://localhost:8000${data.download_url}`, "_blank");
-      setResults({ action: "cv", data: { message: "CV generated and downloading..." } });
+      setResults({ action: "cv", data: { message: "CV downloaded with your resume data!" } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     }

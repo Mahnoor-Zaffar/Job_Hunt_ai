@@ -55,7 +55,9 @@ export default function ResumePage() {
         body: formData,
       });
       if (parseRes.ok) {
-        setParsed(await parseRes.json());
+        const parsedData = await parseRes.json();
+        setParsed(parsedData);
+        localStorage.setItem("parsedResume", JSON.stringify(parsedData));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
