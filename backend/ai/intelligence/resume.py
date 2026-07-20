@@ -202,7 +202,9 @@ class ResumeIntelligence:
             company = match.group("company").strip() if match.group("company") else ""
             dates = match.group("dates") if match.group("dates") else ""
             start_date, end_date = _parse_date_range(dates)
-            jobs.append(JobEntry(title=title, company=company, start_date=start_date, end_date=end_date))
+            jobs.append(
+                JobEntry(title=title, company=company, start_date=start_date, end_date=end_date)
+            )
         return jobs
 
     def _extract_education(self, text: str) -> list[EducationEntry]:
@@ -266,7 +268,15 @@ def _extract_contact(text: str) -> tuple[str, str, str]:
     return name, email, phone
 
 
-_SECTION_NAMES = {"summary", "experience", "education", "skills", "certifications", "projects", "languages"}
+_SECTION_NAMES = {
+    "summary",
+    "experience",
+    "education",
+    "skills",
+    "certifications",
+    "projects",
+    "languages",
+}
 
 
 def _parse_date_range(dates: str) -> tuple[str, str]:

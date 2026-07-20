@@ -41,11 +41,18 @@ from backend.scrapers.orchestrator.orchestrator import ScraperOrchestrator
 from backend.scrapers.pakistan import (
     BrightSpyreScraper,
     IndeedScraper,
+    LinkedInScraper,
     MustakbilScraper,
     RozeeScraper,
 )
 from backend.scrapers.registry.registry import ScraperRegistry, register
-from backend.scrapers.remote import RemoteOKScraper, RemotiveScraper, WeWorkRemotelyScraper
+from backend.scrapers.remote import (
+    HNHiringScraper,
+    RemoteOKScraper,
+    RemotiveScraper,
+    WellfoundScraper,
+    WeWorkRemotelyScraper,
+)
 from backend.scrapers.technologies import TechnologyExtractor, extract_technologies
 from backend.scrapers.validator.validator import Validator
 
@@ -59,9 +66,11 @@ __all__ = [
     "CompanyConfig",
     "ExecutionSummary",
     "GreenhouseAdapter",
+    "HNHiringScraper",
     "HttpClient",
     "IndeedScraper",
     "LeverAdapter",
+    "LinkedInScraper",
     "MustakbilScraper",
     "NormalizedJob",
     "Normalizer",
@@ -79,6 +88,7 @@ __all__ = [
     "ValidationResult",
     "Validator",
     "WeWorkRemotelyScraper",
+    "WellfoundScraper",
     "WorkableAdapter",
     "extract_technologies",
     "load_companies",

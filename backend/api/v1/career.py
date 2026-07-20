@@ -324,6 +324,93 @@ class NegotiationResponse(BaseSchema):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
+class EmailHRRequest(BaseSchema):
+    job_id: str
+    candidate_name: str = "[Your Name]"
+    candidate_email: str = "[Your Email]"
+    candidate_phone: str = "[Your Phone]"
+
+
+class EmailHRResponse(BaseSchema):
+    emails_found: list[dict[str, Any]] = Field(default_factory=list)
+    generated_email: dict[str, str] = Field(default_factory=dict)
+
+
+@router.post("/email-hr", response_model=EmailHRResponse)
+async def email_hr(
+    body: EmailHRRequest, _need_key: None = _need_key, db: AsyncSession = Depends(get_db)
+) -> EmailHRResponse:
+    job = await _get_job(db, body.job_id)
+
+    # Scrape emails
+    from playwright.async_api import async_playwright
+
+    from backend.automation.email_scraper import EmailScraper
+
+    emails_found: list[dict[str, Any]] = []
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            scraper = EmailScraper(page)
+            results = await scraper.find_emails(
+                job_url=job.apply_url or job.url,
+                company_name=job.company,
+                company_url=job.company_url or "",
+            )
+            emails_found = [
+                {
+                    "email": r.email,
+                    "priority": r.priority,
+                    "priority_label": r.priority_label,
+                    "source": r.source,
+                }
+                for r in results[:5]
+            ]
+            await browser.close()
+    except Exception:
+        emails_found = [
+            {
+                "email": "No emails found — try the company website",
+                "priority": 5,
+                "priority_label": "Not Found",
+                "source": "error",
+            }
+        ]
+
+    # Generate email
+    primary_email = next(
+        (e["email"] for e in emails_found if e.get("priority", 5) <= 3),
+        emails_found[0]["email"] if emails_found else "",
+    )
+    team_name = (
+        primary_email.split("@")[0].replace(".", " ").title()
+        if "@" in primary_email
+        else "Hiring Team"
+    )
+
+    skills_str = ", ".join(job.skills[:8]) if job.skills else "relevant technologies"
+
+    subject = f"Application: {job.title} — {body.candidate_name}"
+    email_body = f"""Hi {team_name},
+
+I came across the {job.title} role at {job.company} and wanted to reach out directly.
+
+With experience in {skills_str}, I believe I can contribute to your team. I've been following {job.company}'s work and I'm excited about the opportunity to help build impactful solutions.
+
+I've attached my resume for your review. I'd love to schedule a call to discuss how my background aligns with what you're looking for.
+
+Best regards,
+{body.candidate_name}
+{body.candidate_email}
+{body.candidate_phone}"""
+
+    return EmailHRResponse(
+        emails_found=emails_found,
+        generated_email={"subject": subject, "body": email_body},
+    )
+
+
 @router.get("/research/company/{company_name}", response_model=CompanyResearchResponse)
 async def company_research(
     company_name: str, _need_key: None = _need_key

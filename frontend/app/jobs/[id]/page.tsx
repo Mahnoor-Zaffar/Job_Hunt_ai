@@ -1,5 +1,6 @@
 import { AiAssistantPanel } from "@/components/ai-assistant-panel";
 import { Card } from "@/components/ui";
+import { EmailHRButton } from "@/components/email-hr-button";
 
 async function getJob(id: string) {
   try {
@@ -112,6 +113,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           {/* AI Actions */}
           <Card title="AI Assistant">
             <AiAssistantPanel jobId={id} />
+            <div className="border-t pt-3 mt-3">
+              <EmailHRButton jobId={id} />
+            </div>
           </Card>
         </div>
 
