@@ -9,7 +9,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 logger = logging.getLogger("job_hunting.email_scraper")
 
@@ -94,6 +94,10 @@ class EmailScraper:
             logger.debug("Tier 4: Google search for %s", company_name)
             await self._google_search(company_name)
 
+        # Always add domain guesses as fallback if nothing good found
+        if not self._has_good_email():
+            self._add_domain_guesses(company_name, company_url or "")
+
         return self._prioritized()
 
     def _visited_urls(self) -> set[str]:
@@ -170,3 +174,24 @@ class EmailScraper:
     def _prioritized(self) -> list[EmailResult]:
         results = sorted(self._found.values(), key=lambda r: r.priority)
         return results
+
+    def _add_domain_guesses(self, company_name: str, company_url: str) -> None:
+        domain = ""
+        try:
+            parsed = urlparse(company_url)
+            domain = parsed.netloc.replace("www.", "")
+        except Exception:
+            pass
+
+        if domain:
+            for prefix, prio in [("hr", 3), ("careers", 3), ("jobs", 3), ("recruiting", 3), ("info", 5)]:
+                guess = f"{prefix}@{domain}"
+                if guess not in self._found:
+                    self._found[guess] = EmailResult(email=guess, source="domain_guess", priority=prio, context=f"Generated from {domain}")
+        elif company_name:
+            clean = re.sub(r"[^a-z0-9]", "", company_name.lower())[:20]
+            if clean:
+                for prefix, prio in [("hr", 4), ("careers", 4), ("info", 5)]:
+                    guess = f"{prefix}@{clean}.com"
+                    if guess not in self._found:
+                        self._found[guess] = EmailResult(email=guess, source="domain_guess", priority=prio, context=f"Generated from {company_name}")

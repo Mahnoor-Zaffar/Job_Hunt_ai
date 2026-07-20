@@ -23,11 +23,31 @@ export function EmailHRButton({ jobId }: { jobId: string }) {
 
   async function handleClick() {
     setLoading(true); setError(null); setEmails(null); setGenerated(null); setCopied(false);
+
+    // Read resume data from localStorage
+    let candidateName = "[Your Name]";
+    let candidateEmail = "[Your Email]";
+    let candidatePhone = "[Your Phone]";
+    try {
+      const saved = localStorage.getItem("parsedResume");
+      if (saved) {
+        const data = JSON.parse(saved);
+        candidateName = data.full_name || candidateName;
+        candidateEmail = data.email || candidateEmail;
+        candidatePhone = data.phone || candidatePhone;
+      }
+    } catch {}
+
     try {
       const res = await fetch("http://localhost:8000/api/v1/career/email-hr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId, candidate_name: "[Your Name]", candidate_email: "[Your Email]", candidate_phone: "[Your Phone]" }),
+        body: JSON.stringify({
+          job_id: jobId,
+          candidate_name: candidateName,
+          candidate_email: candidateEmail,
+          candidate_phone: candidatePhone,
+        }),
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
@@ -47,9 +67,12 @@ export function EmailHRButton({ jobId }: { jobId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        Searching for HR contacts...
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Searching job page, company site, and Google for HR contacts...
+        </div>
+        <p className="text-[10px] text-muted-foreground">This takes 10-20 seconds — scanning multiple sources</p>
       </div>
     );
   }
@@ -90,6 +113,9 @@ export function EmailHRButton({ jobId }: { jobId: string }) {
       <button onClick={handleClick} className="px-3 py-1.5 text-xs border rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
         📧 Email HR
       </button>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        💡 Upload your resume first — it auto-fills your name, email, and phone in the message
+      </p>
       {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   );

@@ -1,5 +1,6 @@
 """Career assistant API — resume, cover letter, interview, application, insights."""
 
+import re
 import uuid
 from typing import Any
 
@@ -369,14 +370,25 @@ async def email_hr(
             ]
             await browser.close()
     except Exception:
-        emails_found = [
-            {
-                "email": "No emails found — try the company website",
-                "priority": 5,
-                "priority_label": "Not Found",
-                "source": "error",
-            }
-        ]
+        # Fallback: generate likely emails from company domain
+        domain = ""
+        if job.company_url:
+            with __import__("contextlib").suppress(Exception):
+                domain = __import__("urllib.parse").urlparse(job.company_url).netloc.replace("www.", "")
+        if not domain and job.company:
+            clean = re.sub(r"[^a-z0-9]", "", job.company.lower())[:20]
+            domain = f"{clean}.com"
+
+        if domain:
+            emails_found = [
+                {"email": f"hr@{domain}", "priority": 3, "priority_label": "HR Department", "source": "domain_guess"},
+                {"email": f"careers@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
+                {"email": f"recruiting@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
+                {"email": f"jobs@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
+                {"email": f"info@{domain}", "priority": 5, "priority_label": "Generic", "source": "domain_guess"},
+            ]
+        else:
+            emails_found = [{"email": "No domain found — try the company website", "priority": 5, "priority_label": "Not Found", "source": "error"}]
 
     # Generate email
     primary_email = next(
