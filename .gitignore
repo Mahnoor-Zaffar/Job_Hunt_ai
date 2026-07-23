@@ -50,3 +50,9 @@ Thumbs.db
 # Playwright
 playwright-report/
 test-results/
+
+# Cache
+*.cache.json
+
+# TypeScript
+*.tsbuildinfo

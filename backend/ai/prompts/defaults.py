@@ -466,5 +466,33 @@ Candidate Profile: $candidate_profile""",
 )
 
 
+# IT Company — problem-solution cold email
+_prompts.add_version(
+    "it_company.cold_email",
+    """Write a problem-solution cold email to this IT services/product company.
+Return ONLY valid JSON with keys "subject" and "body".
+
+The email must identify a likely business problem this type of company faces
+and present the candidate as the solution. Use a professional, confident tone.
+
+Problem-solution framing by company tier:
+- Staff Augmentation / Software House: "Finding reliable developers who work US/EU timezones is hard. I'm a Pakistan-based developer comfortable with async workflows and client communication."
+- Product Company: "Shipping features fast while managing tech debt is a constant challenge. I bring full-stack skills to help you ship and maintain quality."
+- BPO / Outsourcing: "Maintaining consistent quality across client projects at scale requires disciplined engineers. I have experience delivering reliable code in team settings."
+- IT Services / Consulting: "Scaling delivery teams for digital transformation projects needs adaptable developers. I can hit the ground running with modern stacks."
+
+Company: $company_name
+Services: $services
+Company Size: $size
+City: $city
+Company Tier: $company_tier
+Target Role: $role
+Remote: $remote
+Candidate Profile: $candidate_profile""",
+    description="Problem-solution cold email to an IT company",
+    tags=["it_company", "email", "json"],
+)
+
+
 def get_prompt_registry() -> PromptRegistry:
     return _prompts

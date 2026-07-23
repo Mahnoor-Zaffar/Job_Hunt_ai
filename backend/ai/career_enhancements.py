@@ -79,6 +79,42 @@ class CareerEnhancer:
             required_keys=["subject", "body"],
         )
 
+    async def it_company_cold_email(
+        self,
+        company_name: str,
+        industry: str = "",
+        city: str = "",
+        size: str = "",
+        candidate_profile: str = "",
+        role: str = "Full-Stack Developer",
+        remote: str = "Remote",
+        company_tier: str = "Software",
+    ) -> dict[str, str]:
+        services_map = {
+            "Staff Augmentation": "Staff augmentation, custom software development, remote team building",
+            "Software": "Custom software development, web/mobile apps, UI/UX design, AI/ML solutions",
+            "Product": "SaaS product development, platform engineering, product design",
+            "BPO": "Business process outsourcing, IT outsourcing, contact center services, back office operations",
+            "IT Services": "Digital transformation, IT consulting, cloud services, enterprise software",
+        }
+        services = services_map.get(company_tier, "Software development and IT services")
+        return await self._ai.generate_json(
+            "it_company.cold_email",
+            {
+                "company_name": company_name,
+                "company_tier": company_tier,
+                "services": services,
+                "industry": industry or "Technology",
+                "city": city or "Pakistan",
+                "size": size or "N/A",
+                "candidate_profile": candidate_profile
+                or "Full-stack/backend developer with Python, JavaScript, React, Node.js, Docker experience",
+                "role": role,
+                "remote": remote,
+            },
+            required_keys=["subject", "body"],
+        )
+
     async def company_deep_research(self, company_name: str) -> dict[str, Any]:
         return await self._ai.generate_json(
             "career.company_research",

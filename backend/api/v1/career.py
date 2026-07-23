@@ -354,6 +354,35 @@ class StartupPersonalizeRequest(BaseSchema):
     candidate_profile: str = ""
 
 
+class ITCompaniesResponse(BaseSchema):
+    companies: list[dict[str, Any]] = Field(default_factory=list)
+    stats: dict[str, Any] = Field(default_factory=dict)
+
+
+class VerifyITStartRequest(BaseSchema):
+    companies: list[dict[str, Any]]
+
+
+class VerifyITStatusResponse(BaseSchema):
+    task_id: str
+    status: str
+    progress: int = 0
+    total: int = 0
+    companies: list[dict[str, Any]] = Field(default_factory=list)
+    stats: dict[str, Any] = Field(default_factory=dict)
+
+
+class ITPersonalizeRequest(BaseSchema):
+    company_name: str
+    industry: str = ""
+    city: str = ""
+    size: str = ""
+    role: str = "Full-Stack Developer"
+    remote: str = "Remote"
+    candidate_profile: str = ""
+    company_tier: str = "Software"
+
+
 class StartupPersonalizeResponse(BaseSchema):
     subject: str
     body: str
@@ -687,6 +716,23 @@ async def personalize_startup_email(
     return StartupPersonalizeResponse(**result)
 
 
+@router.post("/it-company-email/personalize", response_model=StartupPersonalizeResponse)
+async def personalize_it_company_email(
+    body: ITPersonalizeRequest, _need_key: None = _need_key
+) -> StartupPersonalizeResponse:
+    result = await _enhancer.it_company_cold_email(
+        company_name=body.company_name,
+        industry=body.industry,
+        city=body.city,
+        size=body.size,
+        candidate_profile=body.candidate_profile,
+        role=body.role,
+        remote=body.remote,
+        company_tier=body.company_tier,
+    )
+    return StartupPersonalizeResponse(**result)
+
+
 @router.post("/startup-emails", response_model=StartupEmailsResponse)
 async def find_startup_emails(
     _need_key: None = _need_key,
@@ -960,6 +1006,152 @@ async def get_verify_status(task_id: str) -> VerifyStatusResponse:
     if task is None:
         raise HTTPException(status_code=404, detail="Verification task not found")
     return VerifyStatusResponse(
+        task_id=task_id,
+        status=task["status"],
+        progress=task["progress"],
+        total=task["total"],
+        companies=task["companies"],
+        stats=task["stats"],
+    )
+
+
+# ── IT Companies Endpoint ────────────────────────────────────────────────────
+
+
+@router.post("/it-companies", response_model=ITCompaniesResponse)
+async def find_it_companies(
+    _need_key: None = _need_key,
+    verify: bool = Query(False, description="Validate HR emails via MX + website scraping"),
+) -> ITCompaniesResponse:
+    from backend.automation.it_company_scraper import discover_companies
+
+    raw = await discover_companies()
+
+    companies_data: list[dict[str, Any]] = []
+    for entry in raw:
+        domain = entry["domain"]
+        emails = [
+            {"email": f"hr@{domain}", "priority": 2, "label": "HR Department"},
+            {"email": f"careers@{domain}", "priority": 3, "label": "Jobs/Careers"},
+            {"email": f"jobs@{domain}", "priority": 3, "label": "Jobs/Careers"},
+        ]
+        companies_data.append({
+            "name": entry["name"],
+            "website": f"https://{domain}",
+            "city": entry["city"],
+            "industry": entry["industry"],
+            "size": entry["size"],
+            "linkedin": f"https://linkedin.com/company/{entry['linkedin_slug']}",
+            "category": "it_company",
+            "emails": emails,
+            "email_keywords": {"suggested_subject": f"Full-Stack Developer — Remote — {entry['city']}"},
+            "tier": "Not scanned",
+            "scanned": False,
+        })
+
+    stats: dict[str, Any] = {"total": len(companies_data), "with_emails": len(companies_data)}
+
+    if verify:
+        try:
+            from backend.automation.email_validator import validate_emails_for_domain
+
+            sem = asyncio.Semaphore(5)
+            verified_count = 0
+
+            async def verify_company(c: dict[str, Any]) -> None:
+                nonlocal verified_count
+                domain = c["website"].replace("https://", "").replace("http://", "").split("/")[0]
+                async with sem:
+                    try:
+                        validated = await asyncio.wait_for(
+                            validate_emails_for_domain(domain, c.get("emails", [])),
+                            timeout=20,
+                        )
+                        c["emails"] = validated
+                        verified_count += 1
+                    except TimeoutError:
+                        pass
+
+            await asyncio.gather(*[verify_company(c) for c in companies_data], return_exceptions=True)
+            stats["verified"] = verified_count
+        except ImportError:
+            stats["verify_error"] = 1
+
+    return ITCompaniesResponse(companies=companies_data, stats=stats)
+
+
+# ── IT Companies Background Verification ────────────────────────────────────
+
+it_verify_tasks: dict[str, dict[str, Any]] = {}
+
+
+@router.post("/it-companies/verify", response_model=VerifyITStatusResponse)
+async def verify_it_companies(
+    body: VerifyITStartRequest,
+    _need_key: None = _need_key,
+) -> VerifyITStatusResponse:
+    task_id = uuid.uuid4().hex[:12]
+    task: dict[str, Any] = {
+        "status": "running",
+        "progress": 0,
+        "total": len(body.companies),
+        "companies": body.companies,
+        "stats": {"total": len(body.companies), "with_emails": len(body.companies)},
+    }
+    it_verify_tasks[task_id] = task
+
+    from backend.automation.email_validator import validate_emails_for_domain
+
+    sem = asyncio.Semaphore(3)
+    verified_count = 0
+
+    async def verify_one(i: int, c: dict[str, Any]) -> None:
+        nonlocal verified_count
+        domain = c["website"].replace("https://", "").replace("http://", "").split("/")[0]
+        async with sem:
+            try:
+                validated = await asyncio.wait_for(
+                    validate_emails_for_domain(domain, c.get("emails", [])),
+                    timeout=30,
+                )
+                c["emails"] = validated
+                verified_count += 1
+            except TimeoutError:
+                pass
+        task["progress"] = i + 1
+        task["stats"]["verified"] = verified_count
+
+    asyncio.create_task(_run_it_verification(task, verify_one))
+
+    return VerifyITStatusResponse(
+        task_id=task_id,
+        status="running",
+        progress=0,
+        total=task["total"],
+        companies=task["companies"],
+        stats=task["stats"],
+    )
+
+
+async def _run_it_verification(task: dict[str, Any], verify_one: Any) -> None:
+    try:
+        await asyncio.gather(
+            *[verify_one(i, c) for i, c in enumerate(task["companies"])],
+            return_exceptions=True,
+        )
+        task["status"] = "completed"
+    except Exception:
+        task["status"] = "error"
+    finally:
+        task["stats"]["verified"] = task["stats"].get("verified", 0)
+
+
+@router.get("/it-companies/verify/{task_id}", response_model=VerifyITStatusResponse)
+async def get_it_verify_status(task_id: str) -> VerifyITStatusResponse:
+    task = it_verify_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Verification task not found")
+    return VerifyITStatusResponse(
         task_id=task_id,
         status=task["status"],
         progress=task["progress"],
