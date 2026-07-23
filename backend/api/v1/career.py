@@ -678,6 +678,10 @@ async def find_startup_emails(_need_key: None = _need_key) -> StartupEmailsRespo
                         "requirements": c.requirements[:300],
                         "emails": c.emails,
                         "email_keywords": c.email_keywords,
+                        "industry": c.industry,
+                        "size": c.size,
+                        "linkedin": c.linkedin,
+                        "scanned": c.scanned,
                     }
                 )
 

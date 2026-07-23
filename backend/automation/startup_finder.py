@@ -39,16 +39,39 @@ NATIONAL_QUERIES = [
 ]
 
 ROLE_KEYWORDS = [
-    "full-stack", "fullstack", "full stack", "backend", "back-end",
-    "frontend", "front-end", "software engineer", "developer",
-    "python", "javascript", "react", "node.js", "nodejs",
-    "fastapi", "django", "typescript", "go", "rust", "flutter",
+    "full-stack",
+    "fullstack",
+    "full stack",
+    "backend",
+    "back-end",
+    "frontend",
+    "front-end",
+    "software engineer",
+    "developer",
+    "python",
+    "javascript",
+    "react",
+    "node.js",
+    "nodejs",
+    "fastapi",
+    "django",
+    "typescript",
+    "go",
+    "rust",
+    "flutter",
 ]
 
 REMOTE_KEYWORDS = [
-    "remote", "work from home", "wfh", "anywhere",
-    "distributed team", "remote-first", "work remotely",
-    "global team", "remote position", "fully remote",
+    "remote",
+    "work from home",
+    "wfh",
+    "anywhere",
+    "distributed team",
+    "remote-first",
+    "work remotely",
+    "global team",
+    "remote position",
+    "fully remote",
 ]
 
 
@@ -64,6 +87,10 @@ class CompanyResult:
     requirements: str = ""
     emails: list[dict[str, Any]] = field(default_factory=list)
     email_keywords: dict[str, Any] = field(default_factory=dict)
+    industry: str = ""
+    size: str = ""
+    linkedin: str = ""
+    scanned: bool = False
 
 
 class StartupFinder:
@@ -86,7 +113,10 @@ class StartupFinder:
         logger.info("Phase 3: Email discovery for all companies")
         self._run_email_scraper(targets)
 
-        return sorted(targets, key=lambda c: (0 if c.tier == "Tier 1" else 1 if c.tier == "Tier 2" else 2, c.name))
+        return sorted(
+            targets,
+            key=lambda c: (0 if c.tier == "Tier 1" else 1 if c.tier == "Tier 2" else 2, c.name),
+        )
 
     async def _discover_companies(self) -> list[CompanyResult]:
         results: dict[str, CompanyResult] = {}
@@ -105,19 +135,28 @@ class StartupFinder:
                 await asyncio.sleep(0.3)
                 content = await self._page.content()
 
-                links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', content, re.DOTALL)
+                links = re.findall(
+                    r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                    content,
+                    re.DOTALL,
+                )
                 for href, title_html in links:
                     name = re.sub(r"<[^>]+>", "", title_html).strip()
                     if not name or len(name) < 3 or len(name) > 80:
                         continue
-                    if any(w in name.lower() for w in ["wikipedia", "linkedin", "crunchbase", "youtube"]):
+                    if any(
+                        w in name.lower()
+                        for w in ["wikipedia", "linkedin", "crunchbase", "youtube"]
+                    ):
                         continue
                     domain = self._extract_domain(href)
                     if not domain or domain in self._seen_domains:
                         continue
                     self._seen_domains.add(domain)
                     if name not in results:
-                        results[name] = CompanyResult(name=name, website=f"https://{domain}", city=city)
+                        results[name] = CompanyResult(
+                            name=name, website=f"https://{domain}", city=city
+                        )
             except Exception:
                 continue
 
@@ -127,62 +166,152 @@ class StartupFinder:
         return list(results.values())
 
     async def _fallback_discovery(self, results: dict[str, CompanyResult]) -> None:
-        """Hardcoded fallback: known Pakistani tech companies."""
         known = [
-            ("SadaPay", "sadapay.co", "Karachi"),
-            ("Bazaar Technologies", "bazaar.tech", "Karachi"),
-            ("Dbank", "dbank.pk", "Lahore"),
-            ("NayaPay", "nayapay.com", "Islamabad"),
-            ("Tajir", "tajir.com", "Lahore"),
-            ("Airlift", "airlifttech.com", "Lahore"),
-            ("KTrade", "ktrade.pk", "Karachi"),
-            ("PostEx", "postex.com", "Lahore"),
-            ("Abhi", "abhi.com.pk", "Karachi"),
-            ("QisstPay", "qisstpay.com", "Islamabad"),
-            ("OneLoad", "oneload.com", "Islamabad"),
-            ("DealCart", "dealcart.io", "Karachi"),
-            ("Retailo", "retailo.com", "Karachi"),
-            ("Dastgyr", "dastgyr.com", "Lahore"),
-            ("MediBuddy Pakistan", "medibuddy.pk", "Karachi"),
-            ("CreditBook", "creditbook.pk", "Karachi"),
-            ("Truck It In", "truckitin.com", "Karachi"),
-            ("PriceOye", "priceoye.pk", "Lahore"),
-            ("Savyour", "savyour.com", "Karachi"),
-            ("Atomcamp", "atomcamp.com", "Islamabad"),
-            ("VentureDive", "venturedive.com", "Lahore"),
-            ("Arbisoft", "arbisoft.com", "Lahore"),
-            ("Confiz", "confiz.com", "Lahore"),
-            ("Devsinc", "devsinc.com", "Lahore"),
-            ("Systems Ltd", "systemsltd.com", "Lahore"),
-            ("Techlogix", "techlogix.com", "Lahore"),
-            ("10Pearls", "10pearls.com", "Karachi"),
-            ("Folio3", "folio3.com", "Karachi"),
-            ("Contour Software", "contour-software.com", "Karachi"),
-            ("i2c Inc", "i2cinc.com", "Lahore"),
-            ("Careem", "careem.com", "Karachi"),
-            ("Motive", "gomotive.com", "Islamabad"),
-            ("KeepTruckin Pakistan", "keeptruckin.com", "Islamabad"),
-            ("Afiniti", "afiniti.com", "Karachi"),
-            ("TeraData Pakistan", "teradata.com", "Islamabad"),
-            ("Dubizzle Labs", "dubizzlelabs.com", "Lahore"),
-            ("Gaditek", "gaditek.com", "Karachi"),
-            ("Seven Technologies", "seventech.com.pk", "Islamabad"),
-            ("Techlogix Pakistan", "techlogix.com", "Lahore"),
-            ("ePlanet Communications", "eplanetcom.com", "Lahore"),
-            ("Next Generation Innovations", "ngi.com.pk", "Islamabad"),
-            ("SDSol Technologies", "sdsol.com", "Lahore"),
-            ("VaporVM", "vaporvm.com", "Lahore"),
-            ("Code for Pakistan", "codeforpakistan.org", "Islamabad"),
-            ("PITB", "pitb.gov.pk", "Lahore"),
-            ("Ignite National Technology Fund", "ignite.org.pk", "Islamabad"),
-            ("PlanX", "planx.pk", "Lahore"),
-            ("The Nest I/O", "thenest.io", "Karachi"),
-            ("Telenor Velocity", "telenorvelocity.com", "Islamabad"),
-            ("Jazz xlr8", "jazzxlr8.com", "Islamabad"),
+            ("SadaPay", "sadapay.co", "Karachi", "Fintech", "200-500", "sadapay"),
+            (
+                "Bazaar Technologies",
+                "bazaar.tech",
+                "Karachi",
+                "E-commerce",
+                "500-1000",
+                "bazaar-technologies",
+            ),
+            ("Dbank", "dbank.pk", "Lahore", "Fintech", "50-200", "dbank-pk"),
+            ("NayaPay", "nayapay.com", "Islamabad", "Fintech", "100-300", "nayapay"),
+            ("Tajir", "tajir.com", "Lahore", "E-commerce", "50-200", "tajir"),
+            (
+                "Airlift",
+                "airlifttech.com",
+                "Lahore",
+                "Logistics",
+                "200-500",
+                "airlift-technologies",
+            ),
+            ("KTrade", "ktrade.pk", "Karachi", "Fintech", "50-150", "ktrade"),
+            ("PostEx", "postex.com", "Lahore", "Logistics", "100-300", "postex"),
+            ("Abhi", "abhi.com.pk", "Karachi", "Fintech", "100-300", "abhi-pk"),
+            ("QisstPay", "qisstpay.com", "Islamabad", "Fintech", "50-200", "qisstpay"),
+            ("OneLoad", "oneload.com", "Islamabad", "Fintech", "50-150", "oneload"),
+            ("DealCart", "dealcart.io", "Karachi", "E-commerce", "50-200", "dealcart"),
+            ("Retailo", "retailo.com", "Karachi", "B2B SaaS", "100-300", "retailo"),
+            ("Dastgyr", "dastgyr.com", "Lahore", "B2B SaaS", "50-200", "dastgyr"),
+            ("CreditBook", "creditbook.pk", "Karachi", "Fintech", "50-200", "creditbook"),
+            ("Truck It In", "truckitin.com", "Karachi", "Logistics", "50-150", "truckitin"),
+            ("PriceOye", "priceoye.pk", "Lahore", "E-commerce", "200-500", "priceoye"),
+            ("Savyour", "savyour.com", "Karachi", "Fintech", "50-100", "savyour"),
+            ("Atomcamp", "atomcamp.com", "Islamabad", "EdTech", "20-50", "atomcamp"),
+            (
+                "Knowledge Platform",
+                "knowledgeplatform.com",
+                "Islamabad",
+                "EdTech",
+                "50-150",
+                "knowledge-platform",
+            ),
+            (
+                "VentureDive",
+                "venturedive.com",
+                "Lahore",
+                "Software Services",
+                "500-1000",
+                "venturedive",
+            ),
+            ("Arbisoft", "arbisoft.com", "Lahore", "Software Services", "500-1000", "arbisoft"),
+            ("Confiz", "confiz.com", "Lahore", "Software Services", "200-500", "confiz"),
+            ("Devsinc", "devsinc.com", "Lahore", "Software Services", "1000-2000", "devsinc"),
+            (
+                "Systems Ltd",
+                "systemsltd.com",
+                "Lahore",
+                "IT Services",
+                "2000-5000",
+                "systems-limited",
+            ),
+            ("Techlogix", "techlogix.com", "Lahore", "IT Services", "500-1000", "techlogix"),
+            ("10Pearls", "10pearls.com", "Karachi", "Software Services", "500-1000", "10pearls"),
+            ("Folio3", "folio3.com", "Karachi", "Software Services", "200-500", "folio3"),
+            (
+                "Contour Software",
+                "contour-software.com",
+                "Karachi",
+                "SaaS",
+                "200-500",
+                "contour-software",
+            ),
+            ("i2c Inc", "i2cinc.com", "Lahore", "Fintech", "500-1000", "i2c-inc"),
+            ("Careem", "careem.com", "Karachi", "Ride-hailing", "2000-5000", "careem"),
+            ("Motive", "gomotive.com", "Islamabad", "Fleet Tech", "2000-5000", "gomotive"),
+            ("Afiniti", "afiniti.com", "Karachi", "AI/ML", "500-1000", "afiniti"),
+            (
+                "Dubizzle Labs",
+                "dubizzlelabs.com",
+                "Lahore",
+                "Classifieds",
+                "200-500",
+                "dubizzle-labs",
+            ),
+            ("Gaditek", "gaditek.com", "Karachi", "Tech Holding", "500-1000", "gaditek"),
+            (
+                "Seven Technologies",
+                "seventech.com.pk",
+                "Islamabad",
+                "Software Services",
+                "50-200",
+                "seven-technologies",
+            ),
+            (
+                "ePlanet Communications",
+                "eplanetcom.com",
+                "Lahore",
+                "Telecom",
+                "200-500",
+                "eplanet-communications",
+            ),
+            ("SDSol Technologies", "sdsol.com", "Lahore", "Software Services", "50-200", "sdsol"),
+            ("VaporVM", "vaporvm.com", "Lahore", "Cloud", "50-150", "vaporvm"),
+            (
+                "Code for Pakistan",
+                "codeforpakistan.org",
+                "Islamabad",
+                "GovTech",
+                "20-50",
+                "code-for-pakistan",
+            ),
+            ("PITB", "pitb.gov.pk", "Lahore", "GovTech", "500-1000", "pitb"),
+            ("Ignite Fund", "ignite.org.pk", "Islamabad", "GovTech", "50-200", "ignite-ntf"),
+            ("PlanX", "planx.pk", "Lahore", "Incubator", "20-50", "planx"),
+            ("The Nest I/O", "thenest.io", "Karachi", "Incubator", "20-50", "the-nest-io"),
+            (
+                "Telenor Velocity",
+                "telenorvelocity.com",
+                "Islamabad",
+                "Accelerator",
+                "50-100",
+                "telenor-velocity",
+            ),
+            ("Jazz xlr8", "jazzxlr8.com", "Islamabad", "Accelerator", "50-100", "jazz-xlr8"),
+            ("Lakson VC", "laksonvc.com", "Karachi", "Venture Capital", "10-50", "lakson-vc"),
+            ("Sarmayacar", "sarmayacar.com", "Karachi", "Venture Capital", "10-50", "sarmayacar"),
+            (
+                "Fatima Ventures",
+                "fatimaventures.com",
+                "Lahore",
+                "Venture Capital",
+                "10-30",
+                "fatima-ventures",
+            ),
+            ("Zindigi", "zindigi.com", "Islamabad", "Fintech", "100-300", "zindigi"),
         ]
-        for name, domain, city in known:
+        for name, domain, city, industry, size, linkedin_slug in known:
             if name not in results:
-                results[name] = CompanyResult(name=name, website=f"https://{domain}", city=city)
+                results[name] = CompanyResult(
+                    name=name,
+                    website=f"https://{domain}",
+                    city=city,
+                    industry=industry,
+                    size=size,
+                    linkedin=f"https://linkedin.com/company/{linkedin_slug}",
+                )
         logger.info("Fallback: added %d known companies", len(known))
 
     def _extract_domain(self, url: str) -> str:
@@ -200,7 +329,9 @@ class StartupFinder:
     async def _scan_company(self, company: CompanyResult, sem: asyncio.Semaphore) -> None:
         async with sem:
             if not company.website:
-                company.website = f"https://{re.sub(r'[^a-z0-9]', '', company.name.lower())[:20]}.com"
+                company.website = (
+                    f"https://{re.sub(r'[^a-z0-9]', '', company.name.lower())[:20]}.com"
+                )
 
             pages = [company.website]
             base = company.website.rstrip("/")
@@ -222,7 +353,7 @@ class StartupFinder:
                         for role in roles:
                             idx = text_lower.find(role)
                             if idx > 0:
-                                company.requirements = text[max(0, idx - 50):idx + 300].strip()
+                                company.requirements = text[max(0, idx - 50) : idx + 300].strip()
                                 break
 
                     if any(kw in text_lower for kw in REMOTE_KEYWORDS):
