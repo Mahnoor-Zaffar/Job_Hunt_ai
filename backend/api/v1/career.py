@@ -331,6 +331,19 @@ class StartupEmailsResponse(BaseSchema):
     stats: dict[str, Any] = Field(default_factory=dict)
 
 
+class VerifyStatusResponse(BaseSchema):
+    task_id: str
+    status: str  # running | completed | error
+    progress: int = 0
+    total: int = 0
+    companies: list[dict[str, Any]] = Field(default_factory=list)
+    stats: dict[str, Any] = Field(default_factory=dict)
+
+
+class VerifyStartRequest(BaseSchema):
+    companies: list[dict[str, Any]]
+
+
 class StartupPersonalizeRequest(BaseSchema):
     company_name: str
     industry: str = ""
@@ -831,4 +844,88 @@ async def find_startup_emails(
     return StartupEmailsResponse(
         companies=companies_data,
         stats=stats,
+    )
+
+
+# -- Background email verification ---------------------------------------------
+
+verify_tasks: dict[str, dict[str, Any]] = {}
+
+
+@router.post("/startup-emails/verify", response_model=VerifyStatusResponse)
+async def verify_startup_emails(
+    body: VerifyStartRequest,
+    _need_key: None = _need_key,
+) -> VerifyStatusResponse:
+    task_id = uuid.uuid4().hex[:12]
+    task: dict[str, Any] = {
+        "status": "running",
+        "progress": 0,
+        "total": len(body.companies),
+        "companies": body.companies,
+        "stats": {"total": len(body.companies), "with_emails": len(body.companies)},
+    }
+    verify_tasks[task_id] = task
+
+    from backend.automation.email_validator import validate_emails_for_domain
+
+    sem = asyncio.Semaphore(3)
+    verified_count = 0
+
+    async def verify_one(i: int, c: dict[str, Any]) -> None:
+        nonlocal verified_count
+        domain = c["website"].replace("https://", "").replace("http://", "").split("/")[0]
+        async with sem:
+            try:
+                validated = await asyncio.wait_for(
+                    validate_emails_for_domain(domain, c.get("emails", [])),
+                    timeout=30,
+                )
+                c["emails"] = validated
+                verified_count += 1
+            except TimeoutError:
+                pass
+        task["progress"] = i + 1
+        task["stats"]["verified"] = verified_count
+
+    asyncio.create_task(_run_verification(task, verify_one))
+
+    return VerifyStatusResponse(
+        task_id=task_id,
+        status="running",
+        progress=0,
+        total=task["total"],
+        companies=task["companies"],
+        stats=task["stats"],
+    )
+
+
+async def _run_verification(
+    task: dict[str, Any],
+    verify_one: Any,
+) -> None:
+    try:
+        await asyncio.gather(
+            *[verify_one(i, c) for i, c in enumerate(task["companies"])],
+            return_exceptions=True,
+        )
+        task["status"] = "completed"
+    except Exception:
+        task["status"] = "error"
+    finally:
+        task["stats"]["verified"] = task["stats"].get("verified", 0)
+
+
+@router.get("/startup-emails/verify/{task_id}", response_model=VerifyStatusResponse)
+async def get_verify_status(task_id: str) -> VerifyStatusResponse:
+    task = verify_tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Verification task not found")
+    return VerifyStatusResponse(
+        task_id=task_id,
+        status=task["status"],
+        progress=task["progress"],
+        total=task["total"],
+        companies=task["companies"],
+        stats=task["stats"],
     )

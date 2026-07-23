@@ -99,6 +99,8 @@ export function StartupFinder() {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stats, setStats] = useState<Record<string, number> | null>(null);
+  const [verifyTaskId, setVerifyTaskId] = useState<string | null>(null);
+  const [verifyProgress, setVerifyProgress] = useState<{current: number; total: number} | null>(null);
   const [filter, setFilter] = useState<"all" | "tier1" | "tier2">("all");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [industryFilter, setIndustryFilter] = useState<string>("all");
@@ -139,16 +141,64 @@ export function StartupFinder() {
 
   async function run() {
     setLoading(true); setCompanies([]); setStats(null);
-    setModal(null); setDiveData({});
+    setModal(null); setDiveData({}); setVerifyTaskId(null);
+
     try {
-      const res = await fetch("http://localhost:8000/api/v1/career/startup-emails?verify=true", { method: "POST" });
+      // Step 1: Load companies with guessed emails (fast)
+      const res = await fetch("http://localhost:8000/api/v1/career/startup-emails", { method: "POST" });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       setCompanies(data.companies || []);
       setStats(data.stats || {});
-    } catch { setStats({ error: 1 }); }
-    setLoading(false);
+      setLoading(false);
+
+      // Step 2: Start deep verification in background
+      const verifyRes = await fetch("http://localhost:8000/api/v1/career/startup-emails/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companies: data.companies }),
+      });
+      if (!verifyRes.ok) return;
+      const verifyData = await verifyRes.json();
+      setVerifyTaskId(verifyData.task_id);
+      setVerifyProgress({ current: 0, total: verifyData.total });
+    } catch { setStats({ error: 1 }); setLoading(false); }
   }
+
+  // Poll verification status
+  useEffect(() => {
+    if (!verifyTaskId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/v1/career/startup-emails/verify/${verifyTaskId}`);
+        if (!res.ok) { clearInterval(interval); setVerifyTaskId(null); return; }
+        const data = await res.json();
+        setVerifyProgress({ current: data.progress, total: data.total });
+        // Merge updated emails from verification into our company list
+        setCompanies((prev) => {
+          const incoming: Company[] = data.companies ?? [];
+          if (!prev.length || !incoming.length) return prev;
+          const cn: Company[] = [];
+          for (const c of prev) {
+            const ic = incoming.find((x) => x.name === c.name);
+            if (ic && ic.emails?.length) { cn.push({ ...c, emails: ic.emails }); }
+            else { cn.push(c); }
+          }
+          return cn;
+        });
+        // Update stats when completed
+        if (data.stats?.verified !== undefined) {
+          setStats((prev) => ({ ...prev, verified: data.stats.verified }));
+        }
+        if (data.status === "completed" || data.status === "error") {
+          clearInterval(interval);
+          setVerifyTaskId(null);
+          setVerifyProgress(null);
+        }
+      } catch { /* retry on next tick */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [verifyTaskId]);
 
   function updatePipeline(name: string, status: PipelineStatus) {
     const next = { ...pipeline };
@@ -304,7 +354,8 @@ export function StartupFinder() {
         )}
       </button>
 
-      {loading && <p className="text-xs text-muted-foreground">Searching Google + scanning company websites + finding HR emails — takes 1-2 minutes</p>}
+      {loading && <p className="text-xs text-muted-foreground">Finding companies and guessing HR emails...</p>}
+      {verifyProgress && <p className="text-xs text-amber-600 dark:text-amber-400">Verifying emails in background: {verifyProgress.current}/{verifyProgress.total} companies checked</p>}
 
       {stats && companies.length > 0 && (
         <>
@@ -367,7 +418,12 @@ export function StartupFinder() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Showing {filtered.length} of {companies.length} companies · {hasEmails} have HR emails{stats?.verified ? ` · ✓ ${stats.verified} verified` : ""}{stats?.verify_error ? ` · ⚠️ verify skipped` : ""}
+            Showing {filtered.length} of {companies.length} companies · {hasEmails} have HR emails
+            {verifyProgress ? (
+              <> · <span className="text-amber-600 dark:text-amber-400">Verifying: {verifyProgress.current}/{verifyProgress.total}</span></>
+            ) : stats?.verified ? (
+              <> · <span className="text-emerald-600 dark:text-emerald-400">✓ {stats.verified} verified</span></>
+            ) : stats?.verify_error ? " · ⚠️ verify unavailable" : ""}
           </p>
 
           <div className="rounded-lg border overflow-x-auto">
