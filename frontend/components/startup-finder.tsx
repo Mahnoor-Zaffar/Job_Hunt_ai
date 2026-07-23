@@ -6,7 +6,10 @@ interface Company {
   name: string; website: string; city: string; tier: string;
   hiring: boolean; remote: boolean; scanned: boolean;
   roles_found: string[]; requirements: string;
-  emails: { email: string; priority: number; label: string }[];
+  emails: {
+    email: string; priority: number; label: string;
+    confidence?: number; confidence_label?: string; detail?: string; source?: string;
+  }[];
   email_keywords: { subject_kw?: string[]; body_kw?: string[]; suggested_subject?: string };
   industry: string; size: string; linkedin: string;
 }
@@ -138,7 +141,7 @@ export function StartupFinder() {
     setLoading(true); setCompanies([]); setStats(null);
     setModal(null); setDiveData({});
     try {
-      const res = await fetch("http://localhost:8000/api/v1/career/startup-emails", { method: "POST" });
+      const res = await fetch("http://localhost:8000/api/v1/career/startup-emails?verify=true", { method: "POST" });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       setCompanies(data.companies || []);
@@ -364,7 +367,7 @@ export function StartupFinder() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Showing {filtered.length} of {companies.length} companies · {hasEmails} have HR emails
+            Showing {filtered.length} of {companies.length} companies · {hasEmails} have HR emails{stats?.verified ? ` · ✓ ${stats.verified} verified` : ""}{stats?.verify_error ? ` · ⚠️ verify skipped` : ""}
           </p>
 
           <div className="rounded-lg border overflow-x-auto">
@@ -417,14 +420,32 @@ export function StartupFinder() {
                       <td className="px-2 py-2 text-muted-foreground">{c.size || "—"}</td>
                       <td className="px-3 py-2">
                         {c.emails[0] ? (
-                          <button
-                            onClick={() => copyEmail(c.emails[0].email, i)}
-                            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                          >
-                            {c.emails[0].email}
-                            <span className="ml-1 text-[10px]">{c.emails[0].label}</span>
-                            {copiedIdx === i && <span className="ml-1 text-green-600">✓</span>}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => copyEmail(c.emails[0].email, i)}
+                              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                            >
+                              {c.emails[0].email}
+                              {copiedIdx === i && <span className="ml-1 text-green-600">✓</span>}
+                            </button>
+                            {!!c.emails[0].confidence_label && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                c.emails[0].confidence_label === "verified" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                c.emails[0].confidence_label === "confirmed" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                                c.emails[0].confidence_label === "live" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" :
+                                c.emails[0].confidence_label === "probable" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
+                                c.emails[0].confidence_label === "invalid" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
+                                "bg-secondary"
+                              }`}>
+                                {c.emails[0].confidence_label === "verified" ? "✓" :
+                                 c.emails[0].confidence_label === "confirmed" ? "⟡" :
+                                 c.emails[0].confidence_label === "live" ? "⟡" :
+                                 c.emails[0].confidence_label === "probable" ? "?" :
+                                 c.emails[0].confidence_label === "invalid" ? "✕" : ""}
+                                {" "}{c.emails[0].confidence_label}
+                              </span>
+                            )}
+                          </div>
                         ) : "—"}
                       </td>
                       <td className="px-2 py-2">

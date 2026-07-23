@@ -1,5 +1,6 @@
 """Career assistant API — resume, cover letter, interview, application, insights."""
 
+import asyncio
 import re
 import uuid
 from typing import Any
@@ -674,7 +675,10 @@ async def personalize_startup_email(
 
 
 @router.post("/startup-emails", response_model=StartupEmailsResponse)
-async def find_startup_emails(_need_key: None = _need_key) -> StartupEmailsResponse:
+async def find_startup_emails(
+    _need_key: None = _need_key,
+    verify: bool = Query(False, description="Validate HR emails via MX + website scraping"),
+) -> StartupEmailsResponse:
     known = [
         # -- E-commerce / Retail --
         ("DealCart", "dealcart.pk", "Karachi", "E-commerce", "10-25", "dealcart"),
@@ -796,7 +800,35 @@ async def find_startup_emails(_need_key: None = _need_key) -> StartupEmailsRespo
             }
         )
 
+    stats: dict[str, Any] = {"total": len(companies_data), "with_emails": len(companies_data)}
+
+    if verify:
+        try:
+            from backend.automation.email_validator import validate_emails_for_domain
+
+            sem = asyncio.Semaphore(5)
+            verified_count = 0
+
+            async def verify_company(c: dict[str, Any]) -> None:
+                nonlocal verified_count
+                domain = c["website"].replace("https://", "").replace("http://", "").split("/")[0]
+                async with sem:
+                    try:
+                        validated = await asyncio.wait_for(
+                            validate_emails_for_domain(domain, c.get("emails", [])),
+                            timeout=20,
+                        )
+                        c["emails"] = validated
+                        verified_count += 1
+                    except TimeoutError:
+                        pass
+
+            await asyncio.gather(*[verify_company(c) for c in companies_data], return_exceptions=True)
+            stats["verified"] = verified_count
+        except ImportError:
+            stats["verify_error"] = 1
+
     return StartupEmailsResponse(
         companies=companies_data,
-        stats={"total": len(companies_data), "with_emails": len(companies_data)},
+        stats=stats,
     )
