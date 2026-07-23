@@ -440,5 +440,31 @@ Candidate Profile: $candidate_profile""",
 )
 
 
+# Startup — personalized cold email
+_prompts.add_version(
+    "startup.cold_email",
+    """Write a personalized cold email to this startup.
+Return ONLY valid JSON with keys "subject" and "body".
+
+The email must:
+- Be genuinely specific to this company (mention their industry and what they do)
+- Reference their city/tech hub context
+- Show the candidate's enthusiasm for their space (fintech, e-commerce, AI/ML, etc.)
+- Be professional and concise (3-4 short paragraphs)
+- Include the candidate's skills naturally, not as a list
+- End with a call to action (call to discuss)
+
+Company: $company_name
+Industry: $industry
+City: $city
+Company Size: $size
+Role: $role
+Remote: $remote
+Candidate Profile: $candidate_profile""",
+    description="Personalized cold email to a startup company",
+    tags=["startup", "email", "json"],
+)
+
+
 def get_prompt_registry() -> PromptRegistry:
     return _prompts

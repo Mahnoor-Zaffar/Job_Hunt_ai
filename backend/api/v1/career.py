@@ -330,6 +330,21 @@ class StartupEmailsResponse(BaseSchema):
     stats: dict[str, Any] = Field(default_factory=dict)
 
 
+class StartupPersonalizeRequest(BaseSchema):
+    company_name: str
+    industry: str = ""
+    city: str = ""
+    size: str = ""
+    role: str = "Full-Stack Developer"
+    remote: str = "Remote"
+    candidate_profile: str = ""
+
+
+class StartupPersonalizeResponse(BaseSchema):
+    subject: str
+    body: str
+
+
 class EmailHRRequest(BaseSchema):
     job_id: str
     candidate_name: str = "[Your Name]"
@@ -642,51 +657,146 @@ async def full_evaluation(
     return EvalResponse(data=result)
 
 
+@router.post("/startup-email/personalize", response_model=StartupPersonalizeResponse)
+async def personalize_startup_email(
+    body: StartupPersonalizeRequest, _need_key: None = _need_key
+) -> StartupPersonalizeResponse:
+    result = await _enhancer.startup_cold_email(
+        company_name=body.company_name,
+        industry=body.industry,
+        city=body.city,
+        size=body.size,
+        candidate_profile=body.candidate_profile,
+        role=body.role,
+        remote=body.remote,
+    )
+    return StartupPersonalizeResponse(**result)
+
+
 @router.post("/startup-emails", response_model=StartupEmailsResponse)
 async def find_startup_emails(_need_key: None = _need_key) -> StartupEmailsResponse:
-    from playwright.async_api import async_playwright
+    known = [
+        # -- E-commerce / Retail --
+        ("DealCart", "dealcart.pk", "Karachi", "E-commerce", "10-25", "dealcart"),
+        ("PriceOye", "priceoye.pk", "Islamabad", "E-commerce", "30-50", "priceoye"),
+        ("Markaz", "markaz.app", "Islamabad", "E-commerce", "20-40", "markazapp"),
+        ("Byte", "byte.pk", "Lahore", "E-commerce", "10-25", "bytepk"),
+        ("Tajir", "tajir.com", "Lahore", "E-commerce", "30-60", "tajir"),
+        ("Krave Mart", "kravemart.com", "Karachi", "E-commerce", "50-80", "kravemart"),
+        ("Sastaticket", "sastaticket.pk", "Karachi", "Travel", "30-50", "sastaticketpk"),
+        ("Rider", "rider.pk", "Karachi", "E-commerce", "40-70", "riderpk"),
+        # -- Fintech --
+        ("CreditBook", "creditbook.pk", "Karachi", "Fintech", "40-60", "creditbookpk"),
+        ("Udhaar App", "udhaar.app", "Karachi", "Fintech", "20-40", "udhaarapp"),
+        ("QistBazaar", "qistbazaar.pk", "Karachi", "Fintech", "20-40", "qistbazaar"),
+        ("Haball", "haball.com", "Karachi", "Fintech", "20-40", "haball"),
+        ("AdalFi", "adalfi.com", "Lahore", "Fintech", "15-30", "adalfi"),
+        ("Aamarpay", "aamarpay.com", "Karachi", "Fintech", "15-30", "aamarpay"),
+        ("Mahaana Wealth", "mahaana.com", "Islamabad", "Fintech", "10-20", "mahaanawith"),
+        ("SadaPay", "sadapay.co", "Islamabad", "Fintech", "50-80", "sadapay"),
+        ("NayaPay", "nayapay.com", "Islamabad", "Fintech", "80-120", "nayapay"),
+        ("Abhi", "abhi.com.pk", "Karachi", "Fintech", "60-100", "abhi-pk"),
+        ("QisstPay", "qisstpay.com", "Islamabad", "Fintech", "30-50", "qisstpay"),
+        ("OneLoad", "oneload.com", "Islamabad", "Fintech", "30-50", "oneload"),
+        ("Elphinstone", "elphinstone.co", "Karachi", "Fintech", "10-20", "elphinstonefin"),
+        ("Tag", "tag.co", "Karachi", "Fintech", "20-40", "tagpk"),
+        ("Dbank", "dbank.pk", "Lahore", "Fintech", "40-60", "dbank-pk"),
+        # -- HealthTech --
+        ("Marham", "marham.pk", "Lahore", "HealthTech", "30-50", "marhampk"),
+        ("Oladoc", "oladoc.com", "Lahore", "HealthTech", "40-60", "oladoc"),
+        ("MedIQ", "mediq.com.pk", "Lahore", "HealthTech", "20-40", "mediqpk"),
+        ("Xylexa", "xylexa.com", "Karachi", "HealthTech", "10-20", "xylexa"),
+        ("MedznMore", "medznmore.com", "Karachi", "HealthTech", "15-30", "medznmore"),
+        ("Sehat Kahani", "sehatkahani.com", "Karachi", "HealthTech", "30-50", "sehat-kahani"),
+        # -- EdTech --
+        ("Maqsad", "maqsad.pk", "Karachi", "EdTech", "30-60", "maqsadpk"),
+        ("Edkasa", "edkasa.com", "Lahore", "EdTech", "15-30", "edkasa"),
+        ("Myco", "myco.io", "Karachi", "EdTech", "20-40", "mycoapp"),
+        ("Atomcamp", "atomcamp.com", "Islamabad", "EdTech", "15-30", "atomcamp"),
+        ("Knowledge Platform", "knowledgeplatform.com", "Islamabad", "EdTech", "40-60", "knowledge-platform"),
+        ("Hunarza", "hunarza.com", "Karachi", "EdTech", "5-15", "hunarza"),
+        # -- AI/ML --
+        ("Revora AI", "revora.ai", "Karachi", "AI/ML", "10-20", "revoraai"),
+        ("Oware", "oware.tech", "Karachi", "AI/ML", "10-20", "owaretech"),
+        ("Uplift AI", "upliftaiorg", "Karachi", "Voice AI", "10-20", "upliftaiorg"),
+        ("Zypl AI", "zypl.ai", "Karachi", "AI/ML", "15-30", "zyplai"),
+        ("Vyro AI", "vyro.ai", "Karachi", "AI/ML", "30-50", "vyroai"),
+        ("Vector AI", "vector-ai.co", "Sialkot", "AI/ML", "10-20", "vectoraico"),
+        # -- B2B Commerce / Marketplace --
+        ("Dastgyr", "dastgyr.com", "Karachi", "B2B Commerce", "60-100", "dastgyr"),
+        ("Savyour", "savyour.com", "Karachi", "B2B Commerce", "20-40", "savyourpk"),
+        ("Zaraye", "zaraye.pk", "Karachi", "B2B Marketplace", "15-25", "zarayepk"),
+        ("Retailo", "retailo.com", "Karachi", "B2B Commerce", "60-100", "retailo"),
+        ("Bazaar Technologies", "bazaar.tech", "Karachi", "B2B Commerce", "80-120", "bazaar-technologies"),
+        # -- Logistics / Supply Chain --
+        ("PostEx", "postex.pk", "Karachi", "Logistics", "50-80", "postexpk"),
+        ("Truck It In", "truckitin.com", "Karachi", "Logistics", "30-50", "truckitin"),
+        ("Trukkr", "trukkr.com", "Karachi", "Logistics", "10-20", "trukkr"),
+        ("BridgeLinx", "bridgelinx.com", "Karachi", "Logistics", "30-50", "bridgelinx"),
+        ("Cheetay", "cheetay.pk", "Karachi", "Logistics", "40-60", "cheetaypk"),
+        ("Rover", "rover.pk", "Lahore", "Logistics", "20-40", "roverpk"),
+        # -- SaaS --
+        ("Convo", "convoz.com", "Lahore", "SaaS", "40-60", "convoz"),
+        ("COLABS", "colabs.pk", "Lahore", "SaaS", "20-40", "colabspk"),
+        ("Ease", "ease.xyz", "Karachi", "SaaS", "10-20", "easexyz"),
+        ("SMMGuro", "smmguro.com", "Karachi", "SaaS", "15-30", "smmguro"),
+        ("EventMobi", "eventmobi.com", "Lahore", "SaaS", "50-80", "eventmobi"),
+        # -- Mobility / Travel --
+        ("BusCaro", "buscaro.com", "Karachi", "Mobility", "20-40", "buscaro"),
+        ("Bookme", "bookme.pk", "Islamabad", "Travel", "40-60", "bookmepk"),
+        ("Bykea", "bykea.com", "Karachi", "Mobility", "60-100", "bykea"),
+        ("CarFirst", "carfirst.com", "Karachi", "Auto", "40-60", "carfirstpk"),
+        ("Gaadi", "gaadi.pk", "Lahore", "Auto", "15-25", "gaadipk"),
+        # -- EV / CleanTech --
+        ("Zyp Technologies", "zyp.tech", "Karachi", "EV", "20-40", "zyptech"),
+        ("E-Vehicle", "e-vehicle.pk", "Lahore", "EV", "10-20", "evehiclepk"),
+        # -- PropTech / Real Estate --
+        ("Roomy", "roomy.pk", "Karachi", "PropTech", "10-20", "roomypk"),
+        ("Haveli", "haveli.pk", "Lahore", "PropTech", "10-20", "havelipk"),
+        # -- Software Services (small, startup-like) --
+        ("VaporVM", "vaporvm.com", "Lahore", "Cloud", "30-50", "vaporvm"),
+        ("TekRevol", "tekrevol.com", "Lahore", "Software", "60-100", "tekrevol"),
+        ("BitSol", "bitsol.com", "Lahore", "Software", "20-40", "bitsol"),
+        # -- Media / Content --
+        ("MyAdvo", "myadvo.pk", "Karachi", "LegalTech", "10-20", "myadvo"),
+        ("Olive Planet", "oliveplanet.com", "Karachi", "CleanTech", "10-20", "oliveplanet"),
+        ("Shopy", "shopy.pk", "Lahore", "E-commerce", "10-20", "shopy"),
+        # -- Additional from directories --
+        ("Zameen Alert", "zameenalert.com", "Lahore", "PropTech", "5-15", "zameenalrt"),
+        ("TaxCorp", "taxcorp.pk", "Karachi", "Fintech", "10-20", "taxcorp"),
+        ("PakWheels", "pakwheels.com", "Karachi", "Auto", "80-150", "pakwheels"),
+        ("FoodPanda Pakistan", "foodpanda.pk", "Karachi", "FoodTech", "100-200", "foodpanda-pakistan"),
+        ("Youth Club", "youthclub.pk", "Karachi", "EdTech", "15-25", "youthclubpk"),
+        ("Techling", "techling.pk", "Lahore", "Software", "10-20", "techlingpk"),
+    ]
 
-    from backend.automation.startup_finder import StartupFinder
-
-    stats: dict[str, Any] = {}
     companies_data: list[dict[str, Any]] = []
-
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            finder = StartupFinder(page)
-            results = await finder.discover(max_companies=80, scan_depth=3)
-
-            stats = {
-                "total_companies": len(results),
-                "tier1_hiring_remote": sum(1 for c in results if c.tier == "Tier 1"),
-                "tier2_hiring_onsite": sum(1 for c in results if c.tier == "Tier 2"),
-                "emails_found": sum(1 for c in results if c.emails),
+    for name, domain, city, industry, size, linkedin_slug in known:
+        emails = [
+            {"email": f"hr@{domain}", "priority": 2, "label": "HR Department"},
+            {"email": f"careers@{domain}", "priority": 3, "label": "Jobs/Careers"},
+            {"email": f"jobs@{domain}", "priority": 3, "label": "Jobs/Careers"},
+        ]
+        companies_data.append(
+            {
+                "name": name,
+                "website": f"https://{domain}",
+                "city": city,
+                "tier": "Not scanned",
+                "hiring": False,
+                "remote": False,
+                "roles_found": [],
+                "requirements": "",
+                "emails": emails,
+                "email_keywords": {"suggested_subject": f"Full-Stack Developer — Remote — {city}"},
+                "industry": industry,
+                "size": size,
+                "linkedin": f"https://linkedin.com/company/{linkedin_slug}",
+                "scanned": False,
             }
+        )
 
-            for c in results:
-                companies_data.append(
-                    {
-                        "name": c.name,
-                        "website": c.website,
-                        "city": c.city,
-                        "tier": c.tier,
-                        "hiring": c.hiring,
-                        "remote": c.remote,
-                        "roles_found": c.roles_found,
-                        "requirements": c.requirements[:300],
-                        "emails": c.emails,
-                        "email_keywords": c.email_keywords,
-                        "industry": c.industry,
-                        "size": c.size,
-                        "linkedin": c.linkedin,
-                        "scanned": c.scanned,
-                    }
-                )
-
-            await browser.close()
-    except Exception as exc:
-        stats = {"error": str(exc), "total_companies": 0}
-
-    return StartupEmailsResponse(companies=companies_data, stats=stats)
+    return StartupEmailsResponse(
+        companies=companies_data,
+        stats={"total": len(companies_data), "with_emails": len(companies_data)},
+    )

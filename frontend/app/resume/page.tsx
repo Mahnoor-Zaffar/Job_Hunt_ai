@@ -72,11 +72,11 @@ export default function ResumePage() {
             <div className="rounded-lg border bg-card p-5 space-y-4">
               <h3 className="text-sm font-medium">Personal Info</h3>
               <div className="space-y-2 text-sm">
-                {parsed.full_name && <p><span className="text-muted-foreground">Name</span> <span className="font-medium ml-2">{String(parsed.full_name)}</span></p>}
-                {parsed.email && <p><span className="text-muted-foreground">Email</span> <span className="font-medium ml-2">{String(parsed.email)}</span></p>}
-                {parsed.phone && <p><span className="text-muted-foreground">Phone</span> <span className="font-medium ml-2">{String(parsed.phone)}</span></p>}
-                {parsed.location && <p><span className="text-muted-foreground">Location</span> <span className="font-medium ml-2">{String(parsed.location)}</span></p>}
-                {parsed.total_experience_years && <p><span className="text-muted-foreground">Experience</span> <span className="font-medium ml-2">{String(parsed.total_experience_years)} years</span></p>}
+                {!!parsed.full_name && <p><span className="text-muted-foreground">Name</span> <span className="font-medium ml-2">{String(parsed.full_name)}</span></p>}
+                {!!parsed.email && <p><span className="text-muted-foreground">Email</span> <span className="font-medium ml-2">{String(parsed.email)}</span></p>}
+                {!!parsed.phone && <p><span className="text-muted-foreground">Phone</span> <span className="font-medium ml-2">{String(parsed.phone)}</span></p>}
+                {!!parsed.location && <p><span className="text-muted-foreground">Location</span> <span className="font-medium ml-2">{String(parsed.location)}</span></p>}
+                {!!parsed.total_experience_years && <p><span className="text-muted-foreground">Experience</span> <span className="font-medium ml-2">{String(parsed.total_experience_years)} years</span></p>}
               </div>
             </div>
 

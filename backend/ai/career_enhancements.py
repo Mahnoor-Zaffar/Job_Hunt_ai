@@ -54,6 +54,31 @@ class CareerEnhancer:
             ],
         )
 
+    async def startup_cold_email(
+        self,
+        company_name: str,
+        industry: str = "",
+        city: str = "",
+        size: str = "",
+        candidate_profile: str = "",
+        role: str = "Full-Stack Developer",
+        remote: str = "Remote",
+    ) -> dict[str, str]:
+        return await self._ai.generate_json(
+            "startup.cold_email",
+            {
+                "company_name": company_name,
+                "industry": industry or "Technology",
+                "city": city or "Pakistan",
+                "size": size or "N/A",
+                "candidate_profile": candidate_profile
+                or "Full-stack/backend developer with Python, JavaScript, React, Node.js, Docker experience",
+                "role": role,
+                "remote": remote,
+            },
+            required_keys=["subject", "body"],
+        )
+
     async def company_deep_research(self, company_name: str) -> dict[str, Any]:
         return await self._ai.generate_json(
             "career.company_research",

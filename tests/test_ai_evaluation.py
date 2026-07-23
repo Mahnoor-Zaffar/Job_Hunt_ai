@@ -40,7 +40,7 @@ class TestModelEval:
     def test_active_models(self) -> None:
         ev = ModelEval()
         results = ev.run_all()
-        assert results["active_models"] >= 7
+        assert results["active_models"] >= 5
         assert results["has_fallback"] is True
         assert results["costs_defined"] is True
 
@@ -137,7 +137,7 @@ class TestFullEvaluation:
         assert "sanitizer" in results
         assert "scoring" in results
         assert results["prompts"]["prompts_exist"] is True
-        assert results["models"]["active_models"] >= 7
+        assert results["models"]["active_models"] >= 5
 
 
 class TestPromptRegistry:

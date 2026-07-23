@@ -43,15 +43,15 @@ export default async function ApplicationsPage() {
                   Application #{String(app.id).slice(0, 8)}
                 </a>
                 <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                  {app.applied_at && <span>{new Date(String(app.applied_at)).toLocaleDateString()}</span>}
-                  {app.notes && <span>· {String(app.notes).slice(0, 60)}</span>}
+                  {!!app.applied_at && <span>{new Date(String(app.applied_at)).toLocaleDateString()}</span>}
+                  {!!app.notes && <span>· {String(app.notes).slice(0, 60)}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${STATUS_COLORS[String(app.status)] || STATUS_COLORS.draft}`}>
                   {String(app.status).replace("_", " ")}
                 </span>
-                {app.match_score ? (
+                {!!app.match_score ? (
                   <span className="text-xs font-medium">{(Number(app.match_score) * 100).toFixed(0)}%</span>
                 ) : null}
                 <a href={`/jobs/${String(app.job_id)}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">View →</a>
