@@ -1,6 +1,7 @@
 import { Card, StatCard } from "@/components/ui";
 import { RunScrapersButton } from "@/components/run-scrapers";
 import { ScraperStatusPanel } from "@/components/scraper-status";
+import { StartupFinder } from "@/components/startup-finder";
 import { LocationCards } from "@/components/location-cards";
 
 async function getStats() {
@@ -95,6 +96,11 @@ export default async function DashboardPage() {
           <Card>
             <h3 className="text-sm font-medium mb-4">Scrapers</h3>
             <ScraperStatusPanel />
+          </Card>
+
+          <Card>
+            <h3 className="text-sm font-medium mb-4">Pakistan Startups</h3>
+            <StartupFinder />
           </Card>
 
           <Card>

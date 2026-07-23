@@ -325,6 +325,11 @@ class NegotiationResponse(BaseSchema):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
+class StartupEmailsResponse(BaseSchema):
+    companies: list[dict[str, Any]] = Field(default_factory=list)
+    stats: dict[str, Any] = Field(default_factory=dict)
+
+
 class EmailHRRequest(BaseSchema):
     job_id: str
     candidate_name: str = "[Your Name]"
@@ -374,21 +379,55 @@ async def email_hr(
         domain = ""
         if job.company_url:
             with __import__("contextlib").suppress(Exception):
-                domain = __import__("urllib.parse").urlparse(job.company_url).netloc.replace("www.", "")
+                domain = (
+                    __import__("urllib.parse").urlparse(job.company_url).netloc.replace("www.", "")
+                )
         if not domain and job.company:
             clean = re.sub(r"[^a-z0-9]", "", job.company.lower())[:20]
             domain = f"{clean}.com"
 
         if domain:
             emails_found = [
-                {"email": f"hr@{domain}", "priority": 3, "priority_label": "HR Department", "source": "domain_guess"},
-                {"email": f"careers@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
-                {"email": f"recruiting@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
-                {"email": f"jobs@{domain}", "priority": 3, "priority_label": "Jobs/Careers", "source": "domain_guess"},
-                {"email": f"info@{domain}", "priority": 5, "priority_label": "Generic", "source": "domain_guess"},
+                {
+                    "email": f"hr@{domain}",
+                    "priority": 3,
+                    "priority_label": "HR Department",
+                    "source": "domain_guess",
+                },
+                {
+                    "email": f"careers@{domain}",
+                    "priority": 3,
+                    "priority_label": "Jobs/Careers",
+                    "source": "domain_guess",
+                },
+                {
+                    "email": f"recruiting@{domain}",
+                    "priority": 3,
+                    "priority_label": "Jobs/Careers",
+                    "source": "domain_guess",
+                },
+                {
+                    "email": f"jobs@{domain}",
+                    "priority": 3,
+                    "priority_label": "Jobs/Careers",
+                    "source": "domain_guess",
+                },
+                {
+                    "email": f"info@{domain}",
+                    "priority": 5,
+                    "priority_label": "Generic",
+                    "source": "domain_guess",
+                },
             ]
         else:
-            emails_found = [{"email": "No domain found — try the company website", "priority": 5, "priority_label": "Not Found", "source": "error"}]
+            emails_found = [
+                {
+                    "email": "No domain found — try the company website",
+                    "priority": 5,
+                    "priority_label": "Not Found",
+                    "source": "error",
+                }
+            ]
 
     # Generate email
     primary_email = next(
@@ -601,3 +640,49 @@ async def full_evaluation(
     job = await _get_job(db, body.job_id)
     result = await _enhancer.full_evaluation(job, body.cv_text, body.candidate_profile)
     return EvalResponse(data=result)
+
+
+@router.post("/startup-emails", response_model=StartupEmailsResponse)
+async def find_startup_emails(_need_key: None = _need_key) -> StartupEmailsResponse:
+    from playwright.async_api import async_playwright
+
+    from backend.automation.startup_finder import StartupFinder
+
+    stats: dict[str, Any] = {}
+    companies_data: list[dict[str, Any]] = []
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            finder = StartupFinder(page)
+            results = await finder.discover(max_companies=80, scan_depth=3)
+
+            stats = {
+                "total_companies": len(results),
+                "tier1_hiring_remote": sum(1 for c in results if c.tier == "Tier 1"),
+                "tier2_hiring_onsite": sum(1 for c in results if c.tier == "Tier 2"),
+                "emails_found": sum(1 for c in results if c.emails),
+            }
+
+            for c in results:
+                companies_data.append(
+                    {
+                        "name": c.name,
+                        "website": c.website,
+                        "city": c.city,
+                        "tier": c.tier,
+                        "hiring": c.hiring,
+                        "remote": c.remote,
+                        "roles_found": c.roles_found,
+                        "requirements": c.requirements[:300],
+                        "emails": c.emails,
+                        "email_keywords": c.email_keywords,
+                    }
+                )
+
+            await browser.close()
+    except Exception as exc:
+        stats = {"error": str(exc), "total_companies": 0}
+
+    return StartupEmailsResponse(companies=companies_data, stats=stats)
