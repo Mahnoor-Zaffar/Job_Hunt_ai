@@ -121,51 +121,96 @@ class StartupFinder:
     async def _discover_companies(self) -> list[CompanyResult]:
         results: dict[str, CompanyResult] = {}
 
-        queries: list[tuple[str, str]] = []
-        for city_display, city_query in CITIES.items():
-            for template in SEARCH_QUERIES:
-                queries.append((template.format(city=city_query), city_display))
-        for q in NATIONAL_QUERIES:
-            queries.append((q, "Pakistan"))
+        # Phase 1: Try directory scraper (Playwright-based)
+        try:
+            from backend.automation.directory_scraper import discover_startups
 
-        for query, city in queries:
-            try:
-                url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-                await self._page.goto(url, wait_until="domcontentloaded", timeout=15000)
-                await asyncio.sleep(0.3)
-                content = await self._page.content()
+            discovered = await discover_startups()
+            logger.info("Directory scraper found %d startups", len(discovered))
+            for entry in discovered:
+                if entry.name not in results and entry.domain not in self._seen_domains:
+                    self._seen_domains.add(entry.domain)
+                    results[entry.name] = CompanyResult(
+                        name=entry.name,
+                        website=f"https://{entry.domain}" if entry.domain else "",
+                        city=entry.city,
+                        industry=entry.industry,
+                        size=entry.size,
+                        linkedin=(
+                            f"https://linkedin.com/company/{entry.linkedin_slug}"
+                            if entry.linkedin_slug else ""
+                        ),
+                    )
+        except ImportError:
+            logger.info("Directory scraper not available, trying search...")
+        except Exception as e:
+            logger.warning("Directory scraper failed: %s", e)
 
-                links = re.findall(
-                    r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
-                    content,
-                    re.DOTALL,
-                )
-                for href, title_html in links:
-                    name = re.sub(r"<[^>]+>", "", title_html).strip()
-                    if not name or len(name) < 3 or len(name) > 80:
-                        continue
-                    if any(
-                        w in name.lower()
-                        for w in ["wikipedia", "linkedin", "crunchbase", "youtube"]
-                    ):
-                        continue
-                    domain = self._extract_domain(href)
-                    if not domain or domain in self._seen_domains:
-                        continue
-                    self._seen_domains.add(domain)
-                    if name not in results:
-                        results[name] = CompanyResult(
-                            name=name, website=f"https://{domain}", city=city
-                        )
-            except Exception:
-                continue
+        # Phase 2: DuckDuckGo search augmentation
+        if len(results) < 30:
+            queries: list[tuple[str, str]] = []
+            for city_display, city_query in CITIES.items():
+                for template in SEARCH_QUERIES:
+                    queries.append((template.format(city=city_query), city_display))
+            for q in NATIONAL_QUERIES:
+                queries.append((q, "Pakistan"))
 
-        if len(results) < 5:
+            for query, city in queries:
+                try:
+                    url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+                    await self._page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                    await asyncio.sleep(0.3)
+                    content = await self._page.content()
+
+                    links = re.findall(
+                        r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                        content,
+                        re.DOTALL,
+                    )
+                    for href, title_html in links:
+                        name = re.sub(r"<[^>]+>", "", title_html).strip()
+                        if not name or len(name) < 3 or len(name) > 80:
+                            continue
+                        if any(
+                            w in name.lower()
+                            for w in ["wikipedia", "linkedin", "crunchbase", "youtube"]
+                        ):
+                            continue
+                        domain = self._extract_domain(href)
+                        if not domain or domain in self._seen_domains:
+                            continue
+                        self._seen_domains.add(domain)
+                        if name not in results:
+                            results[name] = CompanyResult(
+                                name=name, website=f"https://{domain}", city=city
+                            )
+                except Exception:
+                    continue
+
+        # Phase 3: Fallback to curated list
+        if len(results) < 20:
             await self._fallback_discovery(results)
 
         return list(results.values())
 
     async def _fallback_discovery(self, results: dict[str, CompanyResult]) -> None:
+        # Also try the light httpx version
+        try:
+            from backend.automation.directory_scraper import discover_startups_light
+
+            light = await discover_startups_light()
+            for entry in light:
+                if entry.name not in results and entry.domain not in self._seen_domains:
+                    self._seen_domains.add(entry.domain)
+                    results[entry.name] = CompanyResult(
+                        name=entry.name,
+                        website=f"https://{entry.domain}" if entry.domain else "",
+                        city=entry.city,
+                        industry=entry.industry,
+                    )
+        except Exception:
+            pass
+
         known = [
             ("DealCart", "dealcart.pk", "Karachi", "E-commerce", "10-25", "dealcart"),
             ("PriceOye", "priceoye.pk", "Islamabad", "E-commerce", "30-50", "priceoye"),
@@ -242,12 +287,56 @@ class StartupFinder:
             ("PakWheels", "pakwheels.com", "Karachi", "Auto", "80-150", "pakwheels"),
             ("Youth Club", "youthclub.pk", "Karachi", "EdTech", "15-25", "youthclubpk"),
             ("Techling", "techling.pk", "Lahore", "Software", "10-20", "techlingpk"),
-                "Lahore",
-                "Venture Capital",
-                "10-30",
-                "fatima-ventures",
-            ),
             ("Zindigi", "zindigi.com", "Islamabad", "Fintech", "100-300", "zindigi"),
+            # -- Additional curated entries --
+            ("Keenu", "keenu.pk", "Lahore", "Fintech", "10-30", "keenu"),
+            ("Dukan", "dukan.pk", "Karachi", "Fintech", "20-40", "dukanpk"),
+            ("PayFast", "payfast.pk", "Karachi", "Fintech", "10-20", "payfast"),
+            ("FinPocket", "finpocket.com.pk", "Karachi", "Fintech", "10-20", "finpocket"),
+            ("KalPay", "kalpay.com", "Islamabad", "Fintech", "15-30", "kalpay"),
+            ("MicroFi", "microfi.app", "Islamabad", "Fintech", "5-15", "microfi"),
+            ("Bachat App", "bachat.app", "Karachi", "Fintech", "10-20", "bachatapp"),
+            ("Fauree", "fauree.io", "Karachi", "Fintech", "11-50", "fauree"),
+            ("Sarmaaya", "sarmaaya.pk", "Karachi", "Fintech", "10-20", "sarmaaya"),
+            ("Easypaisa", "easypaisa.com.pk", "Karachi", "Fintech", "200-500", "easypaisa"),
+            ("JazzCash", "jazzcash.com.pk", "Islamabad", "Fintech", "200-500", "jazzcash"),
+            ("Shopsy", "shopsy.pk", "Lahore", "E-commerce", "15-30", "shopsy"),
+            ("Telemart", "telemart.pk", "Lahore", "E-commerce", "20-40", "telemartpk"),
+            ("iShopping.pk", "ishopping.pk", "Karachi", "E-commerce", "20-40", "ishoppingpk"),
+            ("GharPar", "gharpar.pk", "Karachi", "E-commerce", "5-15", "gharpar"),
+            ("Nearpeer", "nearpeer.org", "Lahore", "EdTech", "30-60", "nearpeer"),
+            ("Sabaq.pk", "sabaq.pk", "Islamabad", "EdTech", "10-20", "sabaqpk"),
+            ("EduMate", "edumate.pk", "Karachi", "EdTech", "5-15", "edumate"),
+            ("Taleemabad", "taleemabad.com", "Islamabad", "EdTech", "15-30", "taleemabad"),
+            ("DigiSkills", "digiskills.pk", "Islamabad", "EdTech", "20-40", "digiskills"),
+            ("LearnOBots", "learnobots.com", "Lahore", "EdTech", "10-20", "learnobots"),
+            ("WonderTree", "wondertree.co", "Karachi", "HealthTech", "10-20", "wondertree"),
+            ("Dawaai", "dawaai.pk", "Karachi", "HealthTech", "30-60", "dawaai"),
+            ("HealthWire", "healthwire.pk", "Karachi", "HealthTech", "20-40", "healthwire"),
+            ("DoctorsHood", "doctorshood.com", "Lahore", "HealthTech", "10-20", "doctorshood"),
+            ("Finja", "finja.pk", "Lahore", "Fintech", "40-60", "finjapk"),
+            ("Careem", "careem.com", "Karachi", "Mobility", "500+", "careem"),
+            ("Airlift", "airlift.pk", "Lahore", "Logistics", "30-50", "airliftpk"),
+            ("Leopards Courier", "leopardscourier.com", "Karachi", "Logistics", "500-1000", "leopardscourier"),
+            ("TCS", "tcs.com.pk", "Karachi", "Logistics", "1000-5000", "tcs-pakistan"),
+            ("Call Courier", "callcourier.com.pk", "Karachi", "Logistics", "100-200", "callcourier"),
+            ("Metric", "metricapp.co", "Islamabad", "AI/ML", "10-20", "metricapp"),
+            ("Data Darbar", "datadarbar.ai", "Islamabad", "AI/ML", "10-20", "datadarbar"),
+            ("ZahanatAI", "zahanatai.com", "Karachi", "AI/ML", "5-15", "zahanatai"),
+            ("Systems Limited", "systemsltd.com", "Karachi", "SaaS", "2000+", "systemsltd"),
+            ("Arbisoft", "arbisoft.com", "Lahore", "SaaS", "500+", "arbisoft"),
+            ("Contour Software", "contoursoftware.com", "Karachi", "SaaS", "300+", "contoursoftware"),
+            ("Folio3", "folio3.com", "Karachi", "SaaS", "300+", "folio3"),
+            ("10Pearls", "10pearls.com", "Karachi", "SaaS", "1400+", "10pearls"),
+            ("LetTech", "lettech.pk", "Peshawar", "SaaS", "10-20", "lettech"),
+            ("Agrilift", "agrilift.pk", "Karachi", "AgriTech", "10-20", "agriliftpk"),
+            ("Tazah", "tazah.pk", "Karachi", "AgriTech", "20-40", "tazahpk"),
+            ("Zameen.com", "zameen.com", "Lahore", "PropTech", "200-500", "zameen"),
+            ("Ghar47", "ghar47.com", "Islamabad", "PropTech", "20-40", "ghar47"),
+            ("Shadiyana", "shadiyana.pk", "Karachi", "WeddingTech", "10-20", "shadiyana"),
+            ("Game District", "gamedistrict.com", "Karachi", "Gaming", "50-100", "gamedistrict"),
+            ("GenITeam", "geniteam.com", "Islamabad", "Gaming", "50-100", "geniteam"),
+            ("SolarMax", "solarmax.pk", "Lahore", "CleanTech", "10-20", "solarmaxpk"),
         ]
         for name, domain, city, industry, size, linkedin_slug in known:
             if name not in results:

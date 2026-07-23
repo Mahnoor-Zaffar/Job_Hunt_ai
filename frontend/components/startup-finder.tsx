@@ -434,6 +434,7 @@ export function StartupFinder() {
                   <th className="text-left px-3 py-2 font-medium">City</th>
                   <th className="text-left px-3 py-2 font-medium">Industry</th>
                   <th className="text-left px-2 py-2 font-medium">Size</th>
+                  <th className="text-left px-2 py-2 font-medium">Openings</th>
                   <th className="text-left px-3 py-2 font-medium">HR Email</th>
                   <th className="text-left px-2 py-2 font-medium">Pipeline</th>
                   <th className="text-right px-3 py-2 font-medium">Actions</th>
@@ -474,6 +475,15 @@ export function StartupFinder() {
                         ) : "—"}
                       </td>
                       <td className="px-2 py-2 text-muted-foreground">{c.size || "—"}</td>
+                      <td className="px-2 py-2">
+                        {jobCount > 0 ? (
+                          <a href={`/jobs?company=${encodeURIComponent(c.name)}`} className="text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:underline">
+                            {jobCount} {jobCount === 1 ? "role" : "roles"}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-[11px]">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         {c.emails[0] ? (
                           <div className="flex items-center gap-1.5">
