@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "◧" },
   { href: "/jobs", label: "All Jobs", icon: "⊞" },
+  { href: "/pipeline", label: "Pipeline", icon: "⊣" },
   { href: "/remote-jobs", label: "Remote Jobs", icon: "◎" },
   { href: "/startups", label: "Startups", icon: "⟐" },
   { href: "/it-companies", label: "IT Companies", icon: "⊞" },

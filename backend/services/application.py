@@ -19,6 +19,11 @@ class ApplicationService(BaseService):
 
     VALID_STATUSES: ClassVar[frozenset[str]] = frozenset(
         {
+            "discovered",
+            "recommended",
+            "resume_ready",
+            "outreach_ready",
+            "queued",
             "draft",
             "submitted",
             "under_review",
@@ -28,6 +33,19 @@ class ApplicationService(BaseService):
             "withdrawn",
         }
     )
+
+    PIPELINE_ORDER: ClassVar[list[str]] = [
+        "discovered",
+        "recommended",
+        "resume_ready",
+        "outreach_ready",
+        "queued",
+        "draft",
+        "submitted",
+        "under_review",
+        "interview",
+        "offer",
+    ]
 
     def __init__(self, application_repo: ApplicationRepository) -> None:
         super().__init__()
@@ -149,3 +167,47 @@ class ApplicationService(BaseService):
     async def get_interviews(self, user_id: uuid.UUID) -> list[Application]:
         apps = await self._applications.get_by_user(user_id, skip=0, limit=200)
         return [a for a in apps if a.status == "interview"]
+
+    async def enter_pipeline(
+        self, job_id: uuid.UUID, user_id: uuid.UUID, stage: str = "discovered"
+    ) -> Application:
+        if stage not in self.VALID_STATUSES:
+            self._raise_validation(f"Invalid pipeline stage: {stage}")
+        existing = await self._applications.get_by_job_and_user(job_id, user_id)
+        if existing:
+            return existing
+        application = Application(
+            user_id=user_id,
+            job_id=job_id,
+            status=stage,
+        )
+        return await self._applications.create(application)
+
+    async def advance_pipeline(self, application_id: uuid.UUID) -> Application | None:
+        application = await self._applications.get_by_id(application_id)
+        if application is None:
+            return None
+        current = application.status if application.status in self.PIPELINE_ORDER else "discovered"
+        if current in ("offer", "rejected", "withdrawn"):
+            self._raise_validation(f"Cannot advance from '{current}'")
+        idx = self.PIPELINE_ORDER.index(current)
+        next_idx = min(idx + 1, len(self.PIPELINE_ORDER) - 1)
+        application.status = self.PIPELINE_ORDER[next_idx]
+        await self._applications.session.flush()
+        return application
+
+    async def get_pipeline_jobs(
+        self, user_id: uuid.UUID, stage: str | None = None
+    ) -> list[Application]:
+        apps = await self._applications.get_by_user(user_id, skip=0, limit=500)
+        if stage:
+            return [a for a in apps if a.status == stage]
+        return apps
+
+    async def get_pipeline_stage_counts(self, user_id: uuid.UUID) -> dict[str, int]:
+        apps = await self._applications.get_by_user(user_id, skip=0, limit=500)
+        counts: dict[str, int] = {}
+        for app in apps:
+            stage = app.status if app.status in self.VALID_STATUSES else "discovered"
+            counts[stage] = counts.get(stage, 0) + 1
+        return counts

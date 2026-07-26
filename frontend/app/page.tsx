@@ -12,8 +12,30 @@ async function getStats() {
   } catch { return null; }
 }
 
+async function getRecDashboard() {
+  try {
+    const res = await fetch("http://localhost:8000/api/v1/recommendations/dashboard?user_id=00000000-0000-0000-0000-000000000001", { next: { revalidate: 30 } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
 export default async function DashboardPage() {
-  const data = await getStats();
+  const [data, recDataRaw] = await Promise.all([getStats(), getRecDashboard()]);
+  const recData = recDataRaw as {
+    apply_today_count: number;
+    best_matches: any[];
+    pipeline_stage_counts: Record<string, number>;
+    follow_ups_due: number;
+    interviews_scheduled: number;
+    offers_received: number;
+    missing_skills: string[];
+    needs_profile?: boolean;
+  } | null;
+
+  const pipelineTotal = recData?.pipeline_stage_counts
+    ? Object.values(recData.pipeline_stage_counts).reduce((a: number, b: number) => a + b, 0)
+    : 0;
 
   return (
     <div className="space-y-8">
@@ -29,12 +51,58 @@ export default async function DashboardPage() {
         <RunScrapersButton />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Total Jobs" value={data?.stats?.total_jobs ?? 0} color="indigo" />
-        <StatCard label="Active" value={data?.stats?.active_jobs ?? 0} color="emerald" />
-        <StatCard label="Applied" value={data?.stats?.applications_submitted ?? 0} color="violet" />
-        <StatCard label="Interviews" value={data?.stats?.interviews_scheduled ?? 0} color="amber" />
+      <div className="grid grid-cols-6 gap-4">
+        <a href="/jobs?sort=best" className="block">
+          <div className="rounded-lg border bg-card p-4 border-l-2 border-l-emerald-500 hover:bg-secondary/30 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground mb-1">🔥 Apply Today</p>
+            <p className="text-2xl font-semibold tracking-tight">{recData?.apply_today_count ?? 0}</p>
+          </div>
+        </a>
+        <a href="/pipeline" className="block">
+          <div className="rounded-lg border bg-card p-4 border-l-2 border-l-blue-500 hover:bg-secondary/30 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground mb-1">📄 Pipeline</p>
+            <p className="text-2xl font-semibold tracking-tight">{pipelineTotal}</p>
+          </div>
+        </a>
+        <a href="/pipeline?stage=interview" className="block">
+          <div className="rounded-lg border bg-card p-4 border-l-2 border-l-amber-500 hover:bg-secondary/30 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground mb-1">💼 Interviews</p>
+            <p className="text-2xl font-semibold tracking-tight">{recData?.interviews_scheduled ?? data?.stats?.interviews_scheduled ?? 0}</p>
+          </div>
+        </a>
+        <a href="/applications" className="block">
+          <div className="rounded-lg border bg-card p-4 border-l-2 border-l-violet-500 hover:bg-secondary/30 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground mb-1">📋 Applications</p>
+            <p className="text-2xl font-semibold tracking-tight">{data?.stats?.applications_submitted ?? 0}</p>
+          </div>
+        </a>
+        <a href="/pipeline?stage=offer" className="block">
+          <div className="rounded-lg border bg-card p-4 border-l-2 border-l-emerald-500 hover:bg-secondary/30 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground mb-1">🎉 Offers</p>
+            <p className="text-2xl font-semibold tracking-tight">{recData?.offers_received ?? data?.stats?.offers_received ?? 0}</p>
+          </div>
+        </a>
+        {recData?.needs_profile && (
+          <a href="/settings" className="block">
+            <div className="rounded-lg border bg-card p-4 border-l-2 border-l-rose-500 hover:bg-secondary/30 transition-colors animate-pulse">
+              <p className="text-xs font-medium text-muted-foreground mb-1">⚠️ Setup Needed</p>
+              <p className="text-sm font-semibold tracking-tight">Create Profile</p>
+            </div>
+          </a>
+        )}
       </div>
+
+      {recData?.missing_skills && recData.missing_skills.length > 0 && (
+        <Card title="📄 Skills to Learn">
+          <div className="flex gap-2 flex-wrap">
+            {recData.missing_skills.map((s: string) => (
+              <span key={s} className="text-xs bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded">
+                {s}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
@@ -86,6 +154,14 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-6">
+          <Card title="📅 Follow Ups">
+            {recData?.follow_ups_due ? (
+              <p className="text-sm font-medium text-amber-600">{recData.follow_ups_due} follow-up{recData.follow_ups_due > 1 ? "s" : ""} due</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">No follow-ups due</p>
+            )}
+          </Card>
+
           {data?.jobs_by_location?.length ? (
             <Card>
               <h3 className="text-sm font-medium mb-4">Locations</h3>
@@ -104,10 +180,12 @@ export default async function DashboardPage() {
             <h3 className="text-sm font-medium mb-3">Quick Links</h3>
             <div className="space-y-1">
               {[
+                { href: "/jobs?sort=best", label: "Best match jobs" },
                 { href: "/jobs", label: "Browse all jobs" },
                 { href: "/remote-jobs", label: "Remote jobs" },
-                { href: "/jobs?q=backend", label: "Backend jobs" },
-                { href: "/jobs?q=frontend", label: "Frontend jobs" },
+                { href: "/pipeline", label: "Career pipeline" },
+                { href: "/applications", label: "Applications" },
+                { href: "/settings", label: "Career profile" },
                 { href: "/resume", label: "Upload resume" },
                 { href: "/companies", label: "Companies" },
               ].map((link) => (

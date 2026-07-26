@@ -170,7 +170,7 @@ async def update_application_status(
     db: AsyncSession = Depends(get_db),
 ) -> ApplicationResponse:
     """Update application status."""
-    valid = {"draft", "submitted", "under_review", "interview", "offer", "rejected", "withdrawn"}
+    valid = {"discovered", "recommended", "resume_ready", "outreach_ready", "queued", "draft", "submitted", "under_review", "interview", "offer", "rejected", "withdrawn"}
     if body.status not in valid:
         raise HTTPException(status_code=422, detail=f"Invalid status: {body.status}")
 

@@ -10,6 +10,9 @@ from backend.api.v1.health import router as health_router
 from backend.api.v1.jobs import router as jobs_router
 from backend.api.v1.notifications import router as notifications_router
 from backend.api.v1.observability import router as observability_router
+from backend.api.v1.pipeline import router as pipeline_router
+from backend.api.v1.profile import router as profile_router
+from backend.api.v1.recommendations import router as recommendations_router
 from backend.api.v1.resumes import router as resumes_router
 from backend.api.v1.scrapers import router as scrapers_router
 
@@ -26,3 +29,6 @@ api_v1_router.include_router(ai_router, tags=["ai"])
 api_v1_router.include_router(career_router, tags=["career"])
 api_v1_router.include_router(analytics_router, tags=["analytics"])
 api_v1_router.include_router(observability_router, tags=["ai-observability"])
+api_v1_router.include_router(profile_router, tags=["profile"])
+api_v1_router.include_router(pipeline_router, tags=["pipeline"])
+api_v1_router.include_router(recommendations_router, tags=["recommendations"])

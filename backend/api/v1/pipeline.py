@@ -1,0 +1,138 @@
+"""Pipeline API — manage job opportunity stages through the career pipeline."""
+
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.database.session import get_db
+from backend.models.application import Application
+from backend.repositories.application import ApplicationRepository
+
+router = APIRouter(prefix="/pipeline", tags=["pipeline"])
+
+PIPELINE_ORDER = [
+    "discovered",
+    "recommended",
+    "resume_ready",
+    "outreach_ready",
+    "queued",
+    "draft",
+    "submitted",
+    "under_review",
+    "interview",
+    "offer",
+]
+
+PIPELINE_STAGES = frozenset([*PIPELINE_ORDER, "rejected", "withdrawn"])
+
+
+class PipelineStageCount(BaseModel):
+    stage: str
+    count: int
+
+
+class PipelineOverview(BaseModel):
+    stages: list[PipelineStageCount]
+    total: int
+
+
+class SetStageRequest(BaseModel):
+    stage: str
+
+
+def _pipeline_stage_order(stage: str) -> int:
+    return PIPELINE_ORDER.index(stage) if stage in PIPELINE_ORDER else 999
+
+
+@router.get("", response_model=PipelineOverview)
+async def get_pipeline_overview(
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(..., description="User ID"),
+) -> PipelineOverview:
+    repo = ApplicationRepository(db)
+    apps = await repo.get_by_user(user_id, skip=0, limit=500)
+    counts: dict[str, int] = {}
+    for app in apps:
+        stage = app.status if app.status in PIPELINE_STAGES else "discovered"
+        counts[stage] = counts.get(stage, 0) + 1
+    stages = sorted(
+        [PipelineStageCount(stage=s, count=c) for s, c in counts.items()],
+        key=lambda x: _pipeline_stage_order(x.stage),
+    )
+    return PipelineOverview(stages=stages, total=len(apps))
+
+
+@router.get("/jobs")
+async def get_pipeline_jobs(
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(..., description="User ID"),
+    stage: str | None = Query(None, description="Filter by pipeline stage"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    if stage and stage not in PIPELINE_STAGES:
+        raise HTTPException(status_code=422, detail=f"Invalid pipeline stage: {stage}")
+
+    repo = ApplicationRepository(db)
+    apps = await repo.get_by_user(user_id, skip=0, limit=500)
+    if stage:
+        apps = [a for a in apps if a.status == stage]
+    apps.sort(key=lambda a: a.updated_at or a.created_at, reverse=True)
+    paged = apps[offset: offset + limit]
+    return [
+        {
+            "app_id": str(a.id),
+            "job_id": str(a.job_id),
+            "stage": a.status if a.status in PIPELINE_STAGES else "discovered",
+            "match_score": a.match_score,
+            "applied_at": str(a.applied_at) if a.applied_at else None,
+            "follow_up_at": str(a.follow_up_at) if a.follow_up_at else None,
+            "notes": a.notes,
+        }
+        for a in paged
+    ]
+
+
+@router.post("/jobs/{job_id}/advance")
+async def advance_pipeline_stage(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(..., description="User ID"),
+):
+    repo = ApplicationRepository(db)
+    app = await repo.get_by_job_and_user(job_id, user_id)
+    if app is None:
+        app = Application(user_id=user_id, job_id=job_id, status="discovered")
+        app = await repo.create(app)
+
+    current = app.status if app.status in PIPELINE_ORDER else "discovered"
+    if current == "offer" or current in ("rejected", "withdrawn"):
+        raise HTTPException(status_code=422, detail=f"Cannot advance from '{current}'")
+    idx = PIPELINE_ORDER.index(current) if current in PIPELINE_ORDER else 0
+    next_idx = min(idx + 1, len(PIPELINE_ORDER) - 1)
+    next_stage = PIPELINE_ORDER[next_idx]
+    app.status = next_stage
+    await db.flush()
+    return {"app_id": str(app.id), "job_id": str(job_id), "previous_stage": current, "current_stage": next_stage}
+
+
+@router.post("/jobs/{job_id}/stage")
+async def set_pipeline_stage(
+    job_id: uuid.UUID,
+    body: SetStageRequest,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(..., description="User ID"),
+):
+    if body.stage not in PIPELINE_STAGES:
+        raise HTTPException(status_code=422, detail=f"Invalid pipeline stage: {body.stage}")
+    repo = ApplicationRepository(db)
+    app = await repo.get_by_job_and_user(job_id, user_id)
+    if app is None:
+        app = Application(user_id=user_id, job_id=job_id, status=body.stage)
+        app = await repo.create(app)
+    else:
+        app.status = body.stage
+        await db.flush()
+    return {"app_id": str(app.id), "job_id": str(job_id), "current_stage": body.stage}

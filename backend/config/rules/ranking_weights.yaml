@@ -1,0 +1,24 @@
+weights:
+  resume_match: 35
+  skills_overlap: 25
+  company_quality: 10
+  location_preference: 10
+  classifier_confidence: 10
+  salary_attractiveness: 5
+  freshness: 5
+
+labels:
+  excellent: 85
+  strong: 70
+  worth_applying: 50
+  stretch: 30
+  ignore: 0
+
+actions:
+  excellent: "Apply Immediately"
+  strong: "Tailor Resume"
+  worth_applying: "Tailor Resume"
+  stretch: "Learn Skills First"
+  ignore: "Skip"
+
+max_confidence_threshold: 90

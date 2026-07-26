@@ -88,11 +88,51 @@ export interface NotificationPreferences {
   digest_enabled: boolean;
 }
 
+export interface CareerProfile {
+  id: string;
+  user_id: string;
+  skills: string[];
+  experience_level: string;
+  years_experience: number;
+  target_roles: string[];
+  preferred_locations: string[];
+  remote_preference: string;
+  preferred_salary_min: number | null;
+  preferred_companies: string[];
+  tech_stack: string[];
+  learning_goals: string[];
+  resume_text: string | null;
+}
+
+export interface RankedJobResult {
+  score: number;
+  confidence: string;
+  label: string;
+  recommended_action: string;
+  factors: Record<string, { score: number; max: number; details?: any }>;
+  why?: {
+    strengths: string[];
+    weaknesses: string[];
+    missing_skills: string[];
+    recommendations: string[];
+  };
+  pipeline_stage: string;
+  job: Job;
+}
+
 export const api = {
   jobs: {
     search: (params: Record<string, string>) => {
       const qs = new URLSearchParams(params).toString();
       return fetchJSON<{ items: Job[]; total: number }>(`/jobs?${qs}`);
+    },
+    ranked: (params: Record<string, string>) => {
+      const qs = new URLSearchParams({ user_id: USER_ID, ...params }).toString();
+      return fetchJSON<RankedJobResult[]>(`/recommendations/ranked?${qs}`);
+    },
+    recommended: (params: Record<string, string>) => {
+      const qs = new URLSearchParams({ user_id: USER_ID, ...params }).toString();
+      return fetchJSON<{ items: RankedJobResult[]; total: number }>(`/recommendations/recommended?${qs}`);
     },
   },
   scrapers: {
@@ -161,5 +201,60 @@ export const api = {
         `/career/it-companies?verify=${verify}`,
         { method: "POST" },
       ),
+  },
+  profile: {
+    get: () =>
+      fetchJSON<CareerProfile>(`/profile?user_id=${USER_ID}`),
+    update: (data: Partial<CareerProfile>) =>
+      fetchJSON<CareerProfile>(`/profile?user_id=${USER_ID}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    regenerate: () =>
+      fetchJSON<CareerProfile>(`/profile/regenerate?user_id=${USER_ID}`, {
+        method: "POST",
+      }),
+  },
+  pipeline: {
+    overview: () =>
+      fetchJSON<{ stages: { stage: string; count: number }[]; total: number }>(
+        `/pipeline?user_id=${USER_ID}`,
+      ),
+    jobs: (stage?: string) => {
+      const qs = new URLSearchParams({ user_id: USER_ID });
+      if (stage) qs.set("stage", stage);
+      return fetchJSON<any[]>(`/pipeline/jobs?${qs.toString()}`);
+    },
+    advance: (jobId: string) =>
+      fetchJSON<{ app_id: string; job_id: string; previous_stage: string; current_stage: string }>(
+        `/pipeline/jobs/${jobId}/advance?user_id=${USER_ID}`,
+        { method: "POST" },
+      ),
+    setStage: (jobId: string, stage: string) =>
+      fetchJSON<{ app_id: string; job_id: string; current_stage: string }>(
+        `/pipeline/jobs/${jobId}/stage?user_id=${USER_ID}`,
+        { method: "POST", body: JSON.stringify({ stage }) },
+      ),
+  },
+  recommendations: {
+    dashboard: () =>
+      fetchJSON<{
+        apply_today_count: number;
+        best_matches: RankedJobResult[];
+        pipeline_stage_counts: Record<string, number>;
+        follow_ups_due: number;
+        interviews_scheduled: number;
+        offers_received: number;
+        missing_skills: string[];
+        needs_profile?: boolean;
+      }>(`/recommendations/dashboard?user_id=${USER_ID}`),
+    dailyActions: () =>
+      fetchJSON<{
+        apply_today: RankedJobResult[];
+        apply_today_count: number;
+        due_follow_ups: any[];
+        pipeline_stage_counts: Record<string, number>;
+        missing_skills: string[];
+      }>(`/recommendations/daily-actions?user_id=${USER_ID}`),
   },
 };
