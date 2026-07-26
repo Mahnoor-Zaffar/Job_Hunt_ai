@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.platform import ATSPlatform
@@ -103,6 +103,13 @@ class CompanyWatchlistRepository(BaseRepository[CompanyWatchlist]):
             )
         )
         return list(result.scalars().all())
+
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        result = await self.session.execute(
+            select(func.count()).select_from(CompanyWatchlist).where(CompanyWatchlist.user_id == user_id)
+        )
+        count = result.scalar_one()
+        return count if count is not None else 0
 
     async def get_by_user_and_company(
         self, user_id: uuid.UUID, company_name: str

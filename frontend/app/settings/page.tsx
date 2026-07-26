@@ -2,23 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui";
+import { api, NotificationPreferences } from "@/lib/api";
+
+const DEFAULT_PREFS: NotificationPreferences = {
+  telegram_enabled: true,
+  email_enabled: false,
+  notify_on_match: true,
+  notify_on_new_jobs: true,
+  min_match_score: 0.6,
+  alert_skills: "JavaScript, Python, AI/ML, DevOps, Docker, TypeScript, Node.js, Express.js",
+  alert_min_score: 0.3,
+  alert_email: "",
+  digest_enabled: false,
+};
 
 export default function SettingsPage() {
-  const [prefs, setPrefs] = useState({
-    telegram_enabled: true,
-    email_enabled: false,
-    notify_on_match: true,
-    notify_on_new_jobs: true,
-    min_match_score: 0.6,
-  });
+  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/notifications/preferences?user_id=00000000-0000-0000-0000-000000000001")
-      .then((r) => r.json())
+    api.notifications.getPreferences()
       .then((data) => {
-        if (data.telegram_enabled !== undefined) setPrefs(data);
+        setPrefs({ ...DEFAULT_PREFS, ...data });
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -26,16 +33,28 @@ export default function SettingsPage() {
 
   async function save() {
     setSaved(false);
-    await fetch(
-      "http://localhost:8000/api/v1/notifications/preferences?user_id=00000000-0000-0000-0000-000000000001",
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
-      }
-    );
+    await api.notifications.updatePreferences(prefs);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function syncCompanies() {
+    setSyncResult("Syncing...");
+    try {
+      const itResult = await api.companies.syncItCompanies();
+      setSyncResult(itResult.message);
+    } catch (e: any) {
+      setSyncResult("Error: " + e.message);
+    }
+  }
+
+  async function refreshEmailVerification() {
+    try {
+      const status = await api.companies.emailVerificationStatus();
+      setSyncResult(`Verified: ${status.verified} / ${status.total} companies`);
+    } catch (e: any) {
+      setSyncResult("Error: " + e.message);
+    }
   }
 
   if (loading) {
@@ -60,6 +79,42 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6 max-w-xl">
+        <Card title="Skills & Alerts">
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Your Skills (comma-separated)</label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Jobs matching these skills at watched companies will trigger alerts.
+              </p>
+              <input
+                type="text"
+                value={prefs.alert_skills}
+                onChange={(e) => setPrefs({ ...prefs, alert_skills: e.target.value })}
+                className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Python, JavaScript, React, Node.js, Docker..."
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Minimum Match Score: {prefs.alert_min_score}
+              </label>
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.1"
+                value={prefs.alert_min_score}
+                onChange={(e) => setPrefs({ ...prefs, alert_min_score: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                <span>Loose (0.1)</span>
+                <span>Strict (1.0)</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         <Card title="Notifications">
           <div className="space-y-4">
             <label className="flex items-center justify-between">
@@ -83,6 +138,28 @@ export default function SettingsPage() {
                 className="w-4 h-4 rounded"
               />
             </label>
+            <div>
+              <label className="text-sm font-medium block mb-1">Email address for alerts</label>
+              <input
+                type="email"
+                value={prefs.alert_email}
+                onChange={(e) => setPrefs({ ...prefs, alert_email: e.target.value })}
+                className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="you@example.com"
+              />
+            </div>
+            <label className="flex items-center justify-between">
+              <div>
+                <span className="text-sm">Daily email digest</span>
+                <p className="text-xs text-muted-foreground">Bundle all alerts into one daily email</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={prefs.digest_enabled}
+                onChange={(e) => setPrefs({ ...prefs, digest_enabled: e.target.checked })}
+                className="w-4 h-4 rounded"
+              />
+            </label>
             <label className="flex items-center justify-between">
               <span className="text-sm">Notify on job match</span>
               <input
@@ -101,6 +178,31 @@ export default function SettingsPage() {
                 className="w-4 h-4 rounded"
               />
             </label>
+          </div>
+        </Card>
+
+        <Card title="Company Sync">
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Import curated company lists into the database for email verification and job alerts.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={syncCompanies}
+                className="px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+              >
+                Sync IT Companies & Startups
+              </button>
+              <button
+                onClick={refreshEmailVerification}
+                className="px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+              >
+                Check Verification Status
+              </button>
+            </div>
+            {syncResult && (
+              <p className="text-xs text-muted-foreground">{syncResult}</p>
+            )}
           </div>
         </Card>
 

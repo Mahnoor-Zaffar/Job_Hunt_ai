@@ -1,0 +1,22 @@
+confidence:
+  high:
+    label: "high"
+    requires: "title_explicit_match"
+    score_value: 100
+    description: "Title directly matches a supported category."
+
+  medium:
+    label: "medium"
+    requires: "title_related_match_with_tech"
+    score_value: 70
+    description: "Generic title but technologies clearly match one category."
+
+  low:
+    label: "low"
+    requires: "default"
+    score_value: 0
+    description: "Missing technologies, ambiguous responsibilities, or no match."
+
+thresholds:
+  technology_minimum: 1
+  max_tech_matches_evaluated: 10

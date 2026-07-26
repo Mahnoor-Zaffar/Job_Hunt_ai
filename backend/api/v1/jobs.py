@@ -5,12 +5,16 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.session import get_db
 from backend.models.job import Job
 from backend.repositories.job import JobRepository
 from backend.schemas.base import BaseSchema
+from backend.services.digest.config import get_config
+from backend.services.digest.normalizer import normalize_job
+from backend.services.digest.classifier import classify_job
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -255,3 +259,73 @@ async def update_job_status(
     job.status = status
     await db.flush()
     return _job_to_response(job)
+
+
+class ClassifyJobRequest(BaseSchema):
+    title: str
+    description: str | None = None
+    skills: list[str] | None = None
+    requirements: str | None = None
+
+
+class ClassifyJobResponse(BaseSchema):
+    accepted: bool
+    category: str | None = Field(None, description="Matched category label")
+    confidence: str = Field(..., description="high | medium | low")
+    matched_title: str | None = None
+    matched_technologies: list[str] = Field(default_factory=list)
+    reason: str
+
+
+@router.get("/{job_id}/classify", response_model=ClassifyJobResponse)
+async def classify_job_by_id(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ClassifyJobResponse:
+    """Classify a job from the database by its ID."""
+    repo = JobRepository(db)
+    job = await repo.get_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    raw = {
+        "title": job.title,
+        "description": job.description or "",
+        "skills": job.skills or [],
+        "requirements": job.requirements or "",
+    }
+    body = ClassifyJobRequest(**raw)
+    return await classify_single_job(body)
+
+
+@router.post("/classify", response_model=ClassifyJobResponse)
+async def classify_single_job(body: ClassifyJobRequest) -> ClassifyJobResponse:
+    """Classify a single job against the rule-based filtering engine.
+
+    Returns whether the job is accepted, which category it belongs to,
+    the confidence level, and the reasoning.
+    """
+    raw = {
+        "id": "0",
+        "title": body.title,
+        "description": body.description or "",
+        "skills": body.skills or [],
+        "requirements": body.requirements or "",
+        "company": "",
+        "url": "",
+        "source": "api",
+        "source_id": "api",
+        "location": "",
+    }
+    job = normalize_job(raw)
+    cfg = get_config()
+    result = classify_job(job, cfg)
+
+    return ClassifyJobResponse(
+        accepted=result.accepted,
+        category=result.category,
+        confidence=result.confidence,
+        matched_title=result.matched_title,
+        matched_technologies=result.matched_technologies,
+        reason=result.reason,
+    )

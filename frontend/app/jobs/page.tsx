@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui";
-import { QuickApplyButton } from "@/components/quick-apply";
+import { AutoApplyButton } from "@/components/auto-apply";
 
 const PER_PAGE = 20;
 
@@ -77,7 +77,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-[10px] capitalize bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">{String(job.source)}</span>
                   {job.salary_min ? <span className="text-xs font-medium whitespace-nowrap">${String(job.salary_min)}</span> : null}
-                  <QuickApplyButton jobId={String(job.id)} />
+                  <AutoApplyButton jobId={String(job.id)} />
                 </div>
               </div>
             ))}

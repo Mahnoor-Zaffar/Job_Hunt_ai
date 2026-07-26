@@ -1,12 +1,10 @@
 """Email notification sender.
 
-Uses SMTP to deliver job alerts and notifications.  Configuration
-comes from environment variables (``SMTP_HOST``, ``SMTP_PORT``, etc.).
+Uses SMTP to deliver job alerts and notifications.
 Falls back gracefully when not configured.
 """
 
 import logging
-import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -19,12 +17,12 @@ class EmailNotifier:
     """Async-compatible email sender via SMTP."""
 
     def __init__(self) -> None:
-        self._settings = get_settings()
-        self._host = os.getenv("SMTP_HOST", "")
-        self._port = int(os.getenv("SMTP_PORT", "587"))
-        self._user = os.getenv("SMTP_USER", "")
-        self._password = os.getenv("SMTP_PASSWORD", "")
-        self._from = os.getenv("SMTP_FROM", "notifications@jobhunting.ai")
+        s = get_settings()
+        self._host = s.SMTP_HOST
+        self._port = s.SMTP_PORT
+        self._user = s.SMTP_USER
+        self._password = s.SMTP_PASSWORD
+        self._from = s.SMTP_FROM
 
     @property
     def is_configured(self) -> bool:

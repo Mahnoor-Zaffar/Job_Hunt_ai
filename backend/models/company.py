@@ -1,4 +1,6 @@
-from sqlalchemy import String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models.base import BaseModel
@@ -21,3 +23,9 @@ class Company(BaseModel):
     size: Mapped[str | None] = mapped_column(String(50))
     headquarters: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
+
+    # Verified HR email
+    hr_email: Mapped[str | None] = mapped_column(String(255))
+    hr_email_confidence: Mapped[int | None] = mapped_column()
+    hr_email_source: Mapped[str | None] = mapped_column(String(30))
+    hr_email_verified_at: Mapped[datetime | None] = mapped_column(DateTime)

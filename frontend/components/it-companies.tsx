@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 interface Company {
   name: string; website: string; city: string; tier: string;
@@ -121,10 +122,29 @@ export function ItCompaniesFinder() {
   const [companyRoles, setCompanyRoles] = useState<Record<string, string[]>>({});
   const [modal, setModal] = useState<{company: Company; idx: number} | null>(null);
   const [copyEmailText, setCopyEmailText] = useState<number | null>(null);
+  const [watchedCompanies, setWatchedCompanies] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setPipeline(loadPipeline());
+    loadWatchlist();
   }, []);
+
+  async function loadWatchlist() {
+    try {
+      const data = await api.companies.getWatchlist();
+      setWatchedCompanies(new Set(data.items.map((w: any) => w.company_name)));
+    } catch { /* ignore */ }
+  }
+
+  async function toggleWatch(name: string) {
+    const currentlyWatched = watchedCompanies.has(name);
+    try {
+      await api.companies.toggleWatch(name, !currentlyWatched);
+      const next = new Set(watchedCompanies);
+      if (currentlyWatched) next.delete(name); else next.add(name);
+      setWatchedCompanies(next);
+    } catch { /* ignore */ }
+  }
 
   // Fetch jobs for hiring detection
   useEffect(() => {
@@ -163,6 +183,10 @@ export function ItCompaniesFinder() {
       const data = await res.json();
       setCompanies(data.companies || []);
       setStats(data.stats || null);
+
+      // Auto-sync to DB (backend auto-watches newly synced companies)
+      api.companies.syncItCompanies().catch(() => {});
+      loadWatchlist();
     } catch (e: unknown) {
       alert("Error loading IT companies: " + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -498,6 +522,16 @@ export function ItCompaniesFinder() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => toggleWatch(c.name)}
+                            className={`text-[10px] px-2 py-1 rounded font-medium transition-colors ${
+                              watchedCompanies.has(c.name)
+                                ? "bg-primary/20 text-primary"
+                                : "bg-secondary text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {watchedCompanies.has(c.name) ? "★" : "☆"}
+                          </button>
                           <button
                             onClick={() => personalizeEmail(c, i)}
                             disabled={personalizing === i}

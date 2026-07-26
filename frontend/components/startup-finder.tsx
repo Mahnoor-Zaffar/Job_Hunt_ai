@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 interface Company {
   name: string; website: string; city: string; tier: string;
@@ -116,11 +117,30 @@ export function StartupFinder() {
   const [jobCounts, setJobCounts] = useState<Record<string, number>>({});
   const [copyEmailText, setCopyEmailText] = useState<number | null>(null);
   const [modal, setModal] = useState<{type: "dive" | "email"; idx: number; company: Company} | null>(null);
+  const [watchedCompanies, setWatchedCompanies] = useState<Set<string>>(new Set());
 
   // Load pipeline from localStorage on mount
   useEffect(() => {
     setPipeline(loadPipeline());
+    loadWatchlist();
   }, []);
+
+  async function loadWatchlist() {
+    try {
+      const data = await api.companies.getWatchlist();
+      setWatchedCompanies(new Set(data.items.map((w: any) => w.company_name)));
+    } catch { /* ignore */ }
+  }
+
+  async function toggleWatch(name: string) {
+    const currentlyWatched = watchedCompanies.has(name);
+    try {
+      await api.companies.toggleWatch(name, !currentlyWatched);
+      const next = new Set(watchedCompanies);
+      if (currentlyWatched) next.delete(name); else next.add(name);
+      setWatchedCompanies(next);
+    } catch { /* ignore */ }
+  }
 
   // Fetch job counts for cross-reference
   useEffect(() => {
@@ -151,6 +171,10 @@ export function StartupFinder() {
       setCompanies(data.companies || []);
       setStats(data.stats || {});
       setLoading(false);
+
+      // Auto-sync to DB (backend auto-watches newly synced companies)
+      api.companies.syncStartups().catch(() => {});
+      loadWatchlist();
 
       // Step 2: Start deep verification in background
       const verifyRes = await fetch("http://localhost:8000/api/v1/career/startup-emails/verify", {
@@ -527,6 +551,16 @@ export function StartupFinder() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => toggleWatch(c.name)}
+                            className={`text-[10px] px-2 py-1 rounded font-medium transition-colors ${
+                              watchedCompanies.has(c.name)
+                                ? "bg-primary/20 text-primary"
+                                : "bg-secondary text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {watchedCompanies.has(c.name) ? "★" : "☆"}
+                          </button>
                           <button
                             onClick={() => personalizeEmail(c, i)}
                             disabled={personalizing === i}

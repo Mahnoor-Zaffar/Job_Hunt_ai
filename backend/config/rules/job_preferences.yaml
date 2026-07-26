@@ -1,0 +1,17 @@
+preferences:
+  max_per_category: 10
+  max_total: 50
+  min_confidence: medium
+  max_days_old: 30
+  preferred_locations:
+    - remote
+    - hybrid
+  preferred_employment_types:
+    - full time
+    - full-time
+    - contract
+  exclude_internships: true
+  sort_by:
+    - confidence
+    - posted_at
+    - salary_min

@@ -2,6 +2,7 @@ import { Card, StatCard } from "@/components/ui";
 import { RunScrapersButton } from "@/components/run-scrapers";
 import { ScraperStatusPanel } from "@/components/scraper-status";
 import { LocationCards } from "@/components/location-cards";
+import { RecentAlerts } from "@/components/recent-alerts";
 
 async function getStats() {
   try {
@@ -97,11 +98,14 @@ export default async function DashboardPage() {
             <ScraperStatusPanel />
           </Card>
 
+          <RecentAlerts />
+
           <Card>
             <h3 className="text-sm font-medium mb-3">Quick Links</h3>
             <div className="space-y-1">
               {[
                 { href: "/jobs", label: "Browse all jobs" },
+                { href: "/remote-jobs", label: "Remote jobs" },
                 { href: "/jobs?q=backend", label: "Backend jobs" },
                 { href: "/jobs?q=frontend", label: "Frontend jobs" },
                 { href: "/resume", label: "Upload resume" },

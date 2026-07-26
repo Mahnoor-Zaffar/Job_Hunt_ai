@@ -114,3 +114,12 @@ class JobRepository(BaseRepository[Job]):
             job.status = "expired"
         await self.session.flush()
         return len(expired)
+
+    async def get_recent_by_source(self, source: str, limit: int = 20) -> list[Job]:
+        result = await self.session.execute(
+            select(Job)
+            .where(Job.source == source)
+            .order_by(Job.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())

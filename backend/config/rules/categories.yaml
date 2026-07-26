@@ -1,0 +1,102 @@
+categories:
+  backend:
+    label: "Backend Engineering"
+    title_patterns:
+      - "backend engineer"
+      - "backend developer"
+      - "software engineer (backend)"
+      - "python developer"
+      - "python engineer"
+      - "fastapi developer"
+      - "django developer"
+      - "flask developer"
+      - "node.js developer"
+      - "nestjs developer"
+      - "api engineer"
+    tech_domains:
+      - backend
+
+  frontend:
+    label: "Frontend Engineering"
+    title_patterns:
+      - "frontend engineer"
+      - "frontend developer"
+      - "react developer"
+      - "react engineer"
+      - "next.js developer"
+      - "javascript developer"
+      - "typescript developer"
+      - "ui engineer"
+    tech_domains:
+      - frontend
+
+  fullstack:
+    label: "Full Stack Engineering"
+    title_patterns:
+      - "full stack engineer"
+      - "full stack developer"
+      - "mern developer"
+      - "fullstack engineer"
+      - "fullstack developer"
+    tech_domains:
+      - backend
+      - frontend
+
+  python:
+    label: "Python Development"
+    title_patterns:
+      - "python developer"
+      - "python engineer"
+    tech_domains:
+      - backend
+
+  react_nextjs:
+    label: "React / Next.js Development"
+    title_patterns:
+      - "react developer"
+      - "react engineer"
+      - "next.js developer"
+    tech_domains:
+      - frontend
+
+  devops:
+    label: "DevOps Engineering"
+    title_patterns:
+      - "devops engineer"
+      - "cloud engineer"
+      - "platform engineer"
+      - "infrastructure engineer"
+      - "site reliability engineer"
+      - "sre"
+    tech_domains:
+      - devops
+
+  ai:
+    label: "AI Engineering"
+    title_patterns:
+      - "ai engineer"
+      - "generative ai engineer"
+      - "applied ai engineer"
+    tech_domains:
+      - ai
+
+  ml:
+    label: "Machine Learning"
+    title_patterns:
+      - "machine learning engineer"
+      - "ml engineer"
+      - "applied ml engineer"
+      - "nlp engineer"
+      - "deep learning engineer"
+    tech_domains:
+      - ml
+
+  llm:
+    label: "LLM Engineer"
+    title_patterns:
+      - "llm engineer"
+      - "ai platform engineer"
+      - "generative ai engineer"
+      - "prompt engineer"
+    tech_domains:
+      - llm

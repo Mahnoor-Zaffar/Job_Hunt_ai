@@ -402,7 +402,7 @@ class EmailHRResponse(BaseSchema):
 
 @router.post("/email-hr", response_model=EmailHRResponse)
 async def email_hr(
-    body: EmailHRRequest, _need_key: None = _need_key, db: AsyncSession = Depends(get_db)
+    body: EmailHRRequest, db: AsyncSession = Depends(get_db)
 ) -> EmailHRResponse:
     job = await _get_job(db, body.job_id)
 
@@ -735,7 +735,6 @@ async def personalize_it_company_email(
 
 @router.post("/startup-emails", response_model=StartupEmailsResponse)
 async def find_startup_emails(
-    _need_key: None = _need_key,
     verify: bool = Query(False, description="Validate HR emails via MX + website scraping"),
 ) -> StartupEmailsResponse:
     from backend.automation.startup_finder import CompanyResult
@@ -939,7 +938,6 @@ verify_tasks: dict[str, dict[str, Any]] = {}
 @router.post("/startup-emails/verify", response_model=VerifyStatusResponse)
 async def verify_startup_emails(
     body: VerifyStartRequest,
-    _need_key: None = _need_key,
 ) -> VerifyStatusResponse:
     task_id = uuid.uuid4().hex[:12]
     task: dict[str, Any] = {
@@ -1020,7 +1018,6 @@ async def get_verify_status(task_id: str) -> VerifyStatusResponse:
 
 @router.post("/it-companies", response_model=ITCompaniesResponse)
 async def find_it_companies(
-    _need_key: None = _need_key,
     verify: bool = Query(False, description="Validate HR emails via MX + website scraping"),
 ) -> ITCompaniesResponse:
     from backend.automation.it_company_scraper import discover_companies
@@ -1088,7 +1085,6 @@ it_verify_tasks: dict[str, dict[str, Any]] = {}
 @router.post("/it-companies/verify", response_model=VerifyITStatusResponse)
 async def verify_it_companies(
     body: VerifyITStartRequest,
-    _need_key: None = _need_key,
 ) -> VerifyITStatusResponse:
     task_id = uuid.uuid4().hex[:12]
     task: dict[str, Any] = {

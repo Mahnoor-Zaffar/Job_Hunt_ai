@@ -1,0 +1,114 @@
+domains:
+  backend:
+    - python
+    - fastapi
+    - django
+    - flask
+    - node.js
+    - nodejs
+    - express
+    - nestjs
+    - go
+    - rust
+    - postgresql
+    - postgres
+    - mysql
+    - mongodb
+    - redis
+    - api
+    - rest
+    - graphql
+    - sqlalchemy
+    - alembic
+    - celery
+    - rabbitmq
+    - kafka
+
+  frontend:
+    - react
+    - next.js
+    - nextjs
+    - typescript
+    - javascript
+    - vue
+    - angular
+    - svelte
+    - css
+    - html
+    - tailwind
+    - sass
+    - redux
+    - shadcn
+    - radix
+
+  ai:
+    - openai
+    - anthropic
+    - gemini
+    - langchain
+    - langgraph
+    - crewai
+    - rag
+    - vector database
+    - vector db
+    - prompt engineering
+    - ai agents
+    - agent
+    - function calling
+    - tool use
+
+  ml:
+    - tensorflow
+    - pytorch
+    - scikit-learn
+    - sklearn
+    - hugging face
+    - huggingface
+    - transformers
+    - nlp
+    - computer vision
+    - deep learning
+    - neural network
+    - cnn
+    - rnn
+    - xgboost
+    - lightgbm
+    - pandas
+    - numpy
+
+  devops:
+    - docker
+    - kubernetes
+    - k8s
+    - aws
+    - azure
+    - gcp
+    - terraform
+    - ci/cd
+    - jenkins
+    - github actions
+    - gitlab ci
+    - ansible
+    - helm
+    - prometheus
+    - grafana
+    - istio
+    - nginx
+
+  llm:
+    - llm
+    - large language model
+    - gpt
+    - claude
+    - gemini
+    - langchain
+    - langgraph
+    - llamaindex
+    - vector database
+    - vector db
+    - embedding
+    - rag
+    - fine-tuning
+    - finetuning
+    - inference
+    - prompt engineering

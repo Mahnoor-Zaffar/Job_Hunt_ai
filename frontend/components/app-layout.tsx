@@ -1,21 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname } from "next/navigation";
+import { api } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "◧" },
-  { href: "/jobs", label: "Jobs", icon: "⊞" },
+  { href: "/jobs", label: "All Jobs", icon: "⊞" },
+  { href: "/remote-jobs", label: "Remote Jobs", icon: "◎" },
   { href: "/startups", label: "Startups", icon: "⟐" },
   { href: "/it-companies", label: "IT Companies", icon: "⊞" },
   { href: "/companies", label: "Companies", icon: "⊡" },
+  { href: "/alerts", label: "Alerts", icon: "⏢" },
   { href: "/applications", label: "Applications", icon: "⊟" },
   { href: "/resume", label: "Resume", icon: "⊠" },
+  { href: "/classify", label: "Classifier", icon: "◎" },
   { href: "/settings", label: "Settings", icon: "⊡" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await api.notifications.list(true, 1, 1);
+        setUnreadCount(data.unread_count);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 w-56 flex flex-col border-r bg-sidebar">
@@ -29,6 +49,7 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-auto">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const isAlerts = item.href === "/alerts";
           return (
             <a
               key={item.href}
@@ -40,7 +61,12 @@ export function Sidebar() {
               }`}
             >
               <span className="text-base w-5 text-center">{item.icon}</span>
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {isAlerts && unreadCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary text-primary-foreground">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </a>
           );
         })}

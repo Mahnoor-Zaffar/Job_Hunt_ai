@@ -1,14 +1,19 @@
-"""Applications API — list, detail, status, notes, timeline."""
+"""Applications API — list, detail, status, notes, timeline, auto-apply."""
 
+import asyncio
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database.session import get_db
+from backend.database.session import get_db, get_session_factory
 from backend.models.application import Application
 from backend.repositories.application import ApplicationRepository
+from backend.repositories.infrastructure import SettingsRepository
+from backend.repositories.job import JobRepository
+from backend.repositories.resume import ResumeRepository
 from backend.schemas.base import BaseSchema
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -299,3 +304,169 @@ async def get_due_follow_ups(
     svc = ApplicationService(repo)
     apps = await svc.get_due_follow_ups()
     return [_application_to_response(a) for a in apps]
+
+
+# -- Auto-Apply -------------------------------------------------------------
+
+_AUTO_APPLY_TASKS: dict[str, dict[str, Any]] = {}
+
+
+class AutoApplyStatusResponse(BaseSchema):
+    task_id: str
+    status: str  # pending, running, success, failed
+    step: str | None = None
+    message: str | None = None
+    screenshot_path: str | None = None
+    filled_fields: int | None = None
+    error: str | None = None
+
+
+class AutoApplyStartResponse(BaseSchema):
+    task_id: str
+    status: str
+
+
+@router.post("/{application_id}/auto-apply", response_model=AutoApplyStartResponse)
+async def start_auto_apply(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(..., description="User ID"),
+) -> AutoApplyStartResponse:
+    """Run the automated application pipeline for a job.
+
+    Launches a background task that:
+    1. Opens the job's apply URL in a headless browser
+    2. Detects the ATS platform (Greenhouse, Lever, Ashby, Workable)
+    3. Generates AI-powered answers for application questions
+    4. Fills the form, uploads resume, and submits
+    """
+    import asyncio
+
+    from backend.automation.browser.manager import AutomationBrowser
+
+    app_repo = ApplicationRepository(db)
+    application = await app_repo.get_by_id(application_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="Application not found")
+    if str(application.user_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not your application")
+
+    task_id = f"aa_{application_id}_{uuid.uuid4().hex[:6]}"
+    _AUTO_APPLY_TASKS[task_id] = {"status": "pending", "step": "initializing"}
+
+    async def _run() -> None:
+        try:
+            from backend.automation.assist.engine import ApplicationEngine
+
+            _AUTO_APPLY_TASKS[task_id]["status"] = "running"
+            _AUTO_APPLY_TASKS[task_id]["step"] = "fetching job details"
+
+            async with get_session_factory()() as session:
+                job_repo = JobRepository(session)
+                job = await job_repo.get_by_id(application.job_id)
+                if not job or not job.apply_url:
+                    _AUTO_APPLY_TASKS[task_id].update(
+                        status="failed", error="No apply URL available", step="failed"
+                    )
+                    return
+
+                resume_repo = ResumeRepository(session)
+                resume = await resume_repo.get_primary(user_id)
+                resume_path = resume.file_path if resume else ""
+
+                settings_repo = SettingsRepository(session)
+                candidate_profile = await settings_repo.get_value(user_id, "profile.summary", "")
+
+            _AUTO_APPLY_TASKS[task_id]["step"] = "launching browser"
+
+            browser = AutomationBrowser(headless=True)
+            await browser.start()
+            ctx = await browser.new_context()
+            page = await browser.new_page(ctx)
+
+            _AUTO_APPLY_TASKS[task_id]["step"] = "running application engine"
+
+            engine = ApplicationEngine(page, job, candidate_profile=candidate_profile)
+            result = await engine.run(resume_path=resume_path)
+
+            _AUTO_APPLY_TASKS[task_id]["step"] = "saving result"
+            _AUTO_APPLY_TASKS[task_id]["filled_fields"] = result.get("filled_fields", 0)
+
+            async with get_session_factory()() as session:
+                app_repo2 = ApplicationRepository(session)
+                app = await app_repo2.get_by_id(application_id)
+                if app and result.get("success"):
+                    app.status = "submitted"
+                    app.applied_at = datetime.now(UTC)
+                    app.is_submitted = True
+                    app.notes = f"Auto-applied via {result.get('platform', 'unknown')}"
+                    _AUTO_APPLY_TASKS[task_id]["status"] = "success"
+                    _AUTO_APPLY_TASKS[task_id]["message"] = f"Submitted via {result.get('platform', 'unknown')}"
+                elif app:
+                    app.notes = f"Auto-apply failed: {result.get('error', 'unknown')}"
+                    _AUTO_APPLY_TASKS[task_id].update(
+                        status="failed",
+                        error=result.get("error", "Unknown error"),
+                        message=result.get("error", "Application engine failed"),
+                    )
+                await session.commit()
+
+            # Save screenshot path if available
+            if result.get("record"):
+                record = result["record"]
+                if isinstance(record, dict) and record.get("screenshots"):
+                    _AUTO_APPLY_TASKS[task_id]["screenshot_path"] = record["screenshots"][-1]
+
+            await browser.close()
+
+        except Exception as exc:
+            _AUTO_APPLY_TASKS[task_id].update(
+                status="failed", error=str(exc), step="error"
+            )
+
+    asyncio.create_task(_run())
+    _AUTO_APPLY_TASKS[task_id]["status"] = "pending"
+
+    return AutoApplyStartResponse(task_id=task_id, status="pending")
+
+
+@router.get("/{application_id}/auto-apply/status", response_model=AutoApplyStatusResponse)
+async def auto_apply_status(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> AutoApplyStatusResponse:
+    """Check the status of an auto-apply task."""
+    # Find the task for this application
+    prefix = f"aa_{application_id}_"
+    task = None
+    for tid, tdata in _AUTO_APPLY_TASKS.items():
+        if tid.startswith(prefix):
+            task = tdata
+            break
+
+    if task is None:
+        # Check if already applied
+        repo = ApplicationRepository(db)
+        app = await repo.get_by_id(application_id)
+        if app and app.is_submitted:
+            return AutoApplyStatusResponse(
+                task_id="",
+                status="success",
+                message="Already applied",
+                step="completed",
+            )
+        return AutoApplyStatusResponse(
+            task_id="",
+            status="not_found",
+            step="unknown",
+        )
+
+    return AutoApplyStatusResponse(
+        task_id="",
+        status=task.get("status", "unknown"),
+        step=task.get("step"),
+        message=task.get("message"),
+        error=task.get("error"),
+        filled_fields=task.get("filled_fields"),
+        screenshot_path=task.get("screenshot_path"),
+    )

@@ -41,6 +41,10 @@ class NotificationPreferences(BaseSchema):
     notify_on_match: bool = True
     notify_on_new_jobs: bool = True
     min_match_score: float = 0.6
+    alert_skills: str = ""
+    alert_min_score: float = 0.3
+    alert_email: str = ""
+    digest_enabled: bool = False
 
 
 def _notification_to_response(n: Notification) -> NotificationResponse:
@@ -70,15 +74,17 @@ async def list_notifications(
     repo = NotificationRepository(db)
     if unread_only:
         items = await repo.get_unread_by_user(user_id, skip=(page - 1) * per_page, limit=per_page)
+        total = len(items)  # acceptable when filtering unread
     else:
         items = await repo.get_by_user(user_id, skip=(page - 1) * per_page, limit=per_page)
+        total = await repo.count_by_user(user_id)
 
-    unread = await repo.get_unread_by_user(user_id)
+    unread_count = await repo.count_unread_by_user(user_id)
 
     return NotificationListResponse(
         items=[_notification_to_response(n) for n in items],
-        total=len(items),
-        unread_count=len(unread),
+        total=total,
+        unread_count=unread_count,
     )
 
 
@@ -118,12 +124,20 @@ async def get_preferences(
     m = await _pref(repo, user_id, "notifications.on_match", "true")
     j = await _pref(repo, user_id, "notifications.on_new_jobs", "true")
     s = await _pref(repo, user_id, "notifications.min_match_score", "0.6")
+    sk = await _pref(repo, user_id, "alert.skills", "")
+    am = await _pref(repo, user_id, "alert.min_score", "0.3")
+    ae = await _pref(repo, user_id, "alert.email", "")
+    de = await _pref(repo, user_id, "alert.digest_enabled", "false")
     return NotificationPreferences(
         telegram_enabled=t == "true",
         email_enabled=e == "true",
         notify_on_match=m == "true",
         notify_on_new_jobs=j == "true",
         min_match_score=float(s),
+        alert_skills=sk,
+        alert_min_score=float(am),
+        alert_email=ae,
+        digest_enabled=de == "true",
     )
 
 
@@ -151,5 +165,11 @@ async def update_preferences(
         user_id, "notifications.on_new_jobs", "true" if body.notify_on_new_jobs else "false"
     )
     await repo.set_value(user_id, "notifications.min_match_score", str(body.min_match_score))
+    await repo.set_value(user_id, "alert.skills", body.alert_skills)
+    await repo.set_value(user_id, "alert.min_score", str(body.alert_min_score))
+    await repo.set_value(user_id, "alert.email", body.alert_email)
+    await repo.set_value(
+        user_id, "alert.digest_enabled", "true" if body.digest_enabled else "false"
+    )
     await db.flush()
     return body

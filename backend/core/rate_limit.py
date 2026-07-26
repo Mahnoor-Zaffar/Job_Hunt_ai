@@ -14,7 +14,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 _WINDOW_SECONDS = 60
-_MAX_REQUESTS = 120
+_MAX_REQUESTS = 10000
 _store: dict[str, list[float]] = defaultdict(list)
 
 

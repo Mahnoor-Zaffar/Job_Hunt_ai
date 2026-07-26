@@ -14,3 +14,4 @@ class CompanyWatchlist(BaseModel):
     notes: Mapped[str | None] = mapped_column()
     notify_on_new_jobs: Mapped[bool] = mapped_column(default=True)
     is_active: Mapped[bool] = mapped_column(default=True)
+    auto_watched: Mapped[bool] = mapped_column(default=False)

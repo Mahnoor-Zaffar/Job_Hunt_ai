@@ -3,6 +3,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from backend.database.session import get_session_factory
 from backend.events import (
@@ -25,6 +26,9 @@ from backend.scrapers.models.models import (
     ScraperResult,
 )
 from backend.scrapers.registry.registry import ScraperRegistry
+from backend.services.digest.config import get_config
+from backend.services.digest.classifier import classify_job
+from backend.services.digest.normalizer import normalize_job as digest_normalize
 
 logger = logging.getLogger("job_hunting.orchestrator")
 
@@ -128,16 +132,36 @@ class ScraperOrchestrator:
                         total_discovered = len(jobs)
                         new_count = 0
                         dup_count = 0
+                        rejected_count = 0
+                        _cfg = get_config()
 
                         async with factory() as session:
                             repo = JobRepository(session)
                             for nj in jobs:
                                 existing = await repo.get_by_fingerprint(nj.fingerprint)
-                                if existing is None:
-                                    await repo.create(_normalized_to_model(nj))
-                                    new_count += 1
-                                else:
+                                if existing is not None:
                                     dup_count += 1
+                                    continue
+
+                                # Classify before storing – reject irrelevant jobs
+                                try:
+                                    dnj = digest_normalize(nj.model_dump() if hasattr(nj, 'model_dump') else nj)
+                                    cr = classify_job(dnj, _cfg)
+                                    if not cr.accepted:
+                                        rejected_count += 1
+                                        logger.debug(
+                                            "[%s] rejected: %s (%s) – %s",
+                                            source, nj.title, nj.company, cr.reason,
+                                        )
+                                        continue
+                                except Exception:
+                                    logger.warning(
+                                        "[%s] classification error for %s – inserting anyway",
+                                        source, nj.title,
+                                    )
+
+                                await repo.create(_normalized_to_model(nj))
+                                new_count += 1
 
                             for nj in jobs:
                                 if nj.company:
@@ -155,6 +179,7 @@ class ScraperOrchestrator:
                         log_entry.jobs_discovered = total_discovered
                         log_entry.jobs_new = new_count
                         log_entry.jobs_duplicate = dup_count
+                        log_entry.jobs_skipped = rejected_count
                         log_entry.duration_seconds = duration
                         log_entry.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
@@ -165,10 +190,11 @@ class ScraperOrchestrator:
                             await session.commit()
 
                         logger.info(
-                            "[%s] done — %d new, %d dup in %.2fs",
+                            "[%s] done — %d new, %d dup, %d classified-rejected in %.2fs",
                             source,
                             new_count,
                             dup_count,
+                            rejected_count,
                             duration,
                         )
                         if new_count > 0:
