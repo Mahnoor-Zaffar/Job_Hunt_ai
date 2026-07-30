@@ -127,7 +127,7 @@ async def search_jobs(
 ) -> JobSearchResponse:
     """Search, filter, and sort jobs across all sources."""
     repo = JobRepository(db)
-    fetch_limit = 500 if keywords else per_page
+    fetch_limit = 500
     jobs = await repo.search(
         title=title,
         company=company,
