@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from backend.scrapers.ats.adapter import BaseATSAdapter
@@ -8,34 +10,28 @@ from backend.scrapers.models.models import RawJob
 
 logger = logging.getLogger("job_hunting.ats.lever")
 
+_API_BASE = "https://api.lever.co/v0/postings"
+
 
 class LeverAdapter(BaseATSAdapter):
     """Adapter for Lever ATS public posting API.
 
-    Each company's jobs are served at::
+    Company job boards are at ``https://api.lever.co/v0/postings/{slug}``.
 
-        https://api.lever.co/v0/postings/{company}
-
-    Returns a JSON array of job postings with full metadata.
+    Accepts ``companies.yaml`` entries referencing either the API URL or the
+    human-facing ``https://jobs.lever.co/{slug}`` URL — the slug is extracted
+    automatically from whichever form is configured.
     """
 
     platform = "lever"
 
     async def fetch(self, company: CompanyConfig) -> list[dict[str, Any]]:
-        from urllib.parse import urlparse
+        slug = _extract_slug(company.careers_url)
+        if not slug:
+            logger.warning("Cannot determine Lever company slug from URL: %s", company.careers_url)
+            return []
 
-        base = company.careers_url.rstrip("/")
-
-        parsed = urlparse(base)
-        if "api.lever.co" not in parsed.netloc:
-            company_slug = parsed.path.strip("/").split("/")[-1] if parsed.path else ""
-            if not company_slug:
-                logger.warning("Cannot determine Lever company slug from URL: %s", base)
-                return []
-            url = f"https://api.lever.co/v0/postings/{company_slug}"
-        else:
-            url = base
-
+        url = f"{_API_BASE}/{slug}"
         try:
             data: list[dict[str, Any]] = await self.http.get_json(url)
             if isinstance(data, list):
@@ -71,25 +67,27 @@ class LeverAdapter(BaseATSAdapter):
         location_str = categories.get("location") or item.get("location") or "Remote"
 
         description = _build_lever_description(item)
-        employment_type = categories.get("commitment", None)
-        experience_level = categories.get("team", None)
+        employment_type = categories.get("commitment")
+        experience_level = categories.get("team")
 
         posted_ts = item.get("createdAt")
-        posted_at = datetime.fromtimestamp(int(posted_ts / 1000)) if posted_ts else None
+        posted_at = None
+        if posted_ts:
+            try:
+                posted_at = datetime.fromtimestamp(posted_ts / 1000, tz=UTC).replace(tzinfo=None)
+            except Exception:
+                posted_at = None
 
         salary_raw = item.get("salaryRange") or {}
         salary_min: float | None = None
         salary_max: float | None = None
+        currency: str | None = None
         if isinstance(salary_raw, dict):
             raw_min = salary_raw.get("min")
             raw_max = salary_raw.get("max")
             salary_min = float(raw_min) if isinstance(raw_min, (int, float, str)) else None
             salary_max = float(raw_max) if isinstance(raw_max, (int, float, str)) else None
-        currency = (
-            str(salary_raw.get("currency", "")).upper() or None
-            if isinstance(salary_raw, dict)
-            else None
-        )
+            currency = str(salary_raw.get("currency", "")).upper() or None
 
         return RawJob(
             title=title,
@@ -110,6 +108,23 @@ class LeverAdapter(BaseATSAdapter):
             is_remote=_is_remote(location_str),
             remote_type="remote" if _is_remote(location_str) else "onsite",
         )
+
+
+def _extract_slug(careers_url: str) -> str | None:
+    url = careers_url.rstrip("/")
+    if "api.lever.co" in url:
+        parts = url.split("/")
+        slug = parts[-1] if parts else ""
+        return slug if slug else None
+    if "jobs.lever.co" in url:
+        parts = url.split("/")
+        slug = parts[-1] if parts else ""
+        return slug if slug else None
+    if "lever.co" in url:
+        parts = url.split("/")
+        slug = parts[-1] if parts else ""
+        return slug if slug else None
+    return url.strip("/").split("/")[-1] or None
 
 
 def _build_lever_description(item: dict[str, Any]) -> str:

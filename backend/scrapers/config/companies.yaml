@@ -7,10 +7,11 @@
 #   careers_url:  Base URL for the company's public job board or API endpoint
 #   api_key:      Required for Ashby
 #   skip:         Set to true to pause scraping for this company
-#   archetype:    Company category (AI_Labs, Voice_AI, AI_Platforms, etc.)
+#   archetype:    Company category (AI_Labs, Remote_First, etc.)
 
 companies:
-  # AI Labs
+
+  # ── AI / LLM Labs ──────────────────────────────────────────
   - name: Anthropic
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/anthropic
@@ -41,7 +42,7 @@ companies:
     careers_url: https://boards.greenhouse.io/pinecone
     archetype: AI_Labs
 
-  # Voice AI
+  # ── Voice / Audio AI ───────────────────────────────────────
   - name: ElevenLabs
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/elevenlabs
@@ -57,69 +58,214 @@ companies:
     careers_url: https://boards.greenhouse.io/deepgram
     archetype: Voice_AI
 
-  # AI Platforms
-  - name: Retool
+  # ── Remote-First ───────────────────────────────────────────
+  - name: GitLab
     platform: greenhouse
-    careers_url: https://boards.greenhouse.io/retool
-    archetype: AI_Platforms
+    careers_url: https://boards.greenhouse.io/gitlab
+    archetype: Remote_First
 
-  - name: Airtable
+  - name: Zapier
     platform: greenhouse
-    careers_url: https://boards.greenhouse.io/airtable
-    archetype: AI_Platforms
+    careers_url: https://boards.greenhouse.io/zapier
+    archetype: Remote_First
+
+  - name: Automattic
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/automattic
+    archetype: Remote_First
+
+  - name: DuckDuckGo
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/duckduckgo
+    archetype: Remote_First
+
+  - name: Hotjar
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/hotjar
+    archetype: Remote_First
+
+  - name: InVision
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/invisionapp
+    archetype: Remote_First
+
+  - name: Doist
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/doist
+    archetype: Remote_First
+
+  - name: Buffer
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/buffer
+    archetype: Remote_First
+
+  # ── Remote-Friendly Platforms ──────────────────────────────
+  - name: Stripe
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/stripe
+    archetype: Remote_Friendly
+
+  - name: Cloudflare
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/cloudflare
+    archetype: Remote_Friendly
+
+  - name: Spotify
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/spotify
+    archetype: Remote_Friendly
+
+  - name: Reddit
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/reddit
+    archetype: Remote_Friendly
+
+  - name: Discord
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/discord
+    archetype: Remote_Friendly
+
+  - name: Twitch
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/twitch
+    archetype: Remote_Friendly
+
+  - name: Mozilla
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/mozilla
+    archetype: Remote_Friendly
+
+  - name: Airbnb
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/airbnb
+    archetype: Remote_Friendly
+
+  - name: HubSpot
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/hubspot
+    archetype: Remote_Friendly
+
+  - name: Figma
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/figma
+    archetype: Remote_Friendly
+
+  - name: Datadog
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/datadog
+    archetype: Remote_Friendly
+
+  - name: Webflow
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/webflow
+    archetype: Remote_Friendly
+
+  - name: Twilio
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/twilio
+    archetype: Remote_Friendly
+
+  - name: Elastic
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/elastic
+    archetype: Remote_Friendly
+
+  - name: Squarespace
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/squarespace
+    archetype: Remote_Friendly
+
+  - name: Anchorage
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/anchorage
+    archetype: Remote_Friendly
+
+  - name: Wealthfront
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/wealthfront
+    archetype: Remote_Friendly
+
+  - name: Moonpay
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/moonpay
+    archetype: Remote_Friendly
+
+  # ── DevTools / Infrastructure ──────────────────────────────
+  - name: Netlify
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/netlify
+    archetype: DevTools
 
   - name: Vercel
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/vercel
-    archetype: AI_Platforms
+    archetype: DevTools
+
+  - name: Databricks
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/databricks
+    archetype: DevTools
+
+  - name: Postman
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/postman
+    archetype: DevTools
+
+  - name: Intercom
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/intercom
+    archetype: DevTools
+
+  - name: LaunchDarkly
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/launchdarkly
+    archetype: DevTools
+
+  - name: PagerDuty
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/pagerduty
+    archetype: DevTools
+
+  - name: Airtable
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/airtable
+    archetype: DevTools
+
+  - name: Retool
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/retool
+    archetype: DevTools
 
   - name: Temporal
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/temporal
-    archetype: AI_Platforms
+    archetype: DevTools
 
-  # AI Infrastructure
   - name: Weights & Biases
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/wandb
-    archetype: AI_Platforms
+    archetype: DevTools
 
   - name: Langfuse
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/langfuse
-    archetype: AI_Platforms
+    archetype: DevTools
 
-  # Automation
+  - name: Palantir
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/palantir
+    archetype: DevTools
+
+  # ── Automation / No-Code ───────────────────────────────────
   - name: n8n
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/n8n
     archetype: Automation
 
-  - name: Zapier
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/zapier
-    archetype: Automation
-
-  # Contact Center / CX AI
-  - name: Ada
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/ada
-    archetype: Contact_Center_AI
-
-  - name: LivePerson
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/liveperson
-    archetype: Contact_Center_AI
-
-  # Enterprise
+  # ── Enterprise / SaaS ──────────────────────────────────────
   - name: Salesforce
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/salesforce
-    archetype: Enterprise
-
-  - name: Twilio
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/twilio
     archetype: Enterprise
 
   - name: Gong
@@ -127,7 +273,22 @@ companies:
     careers_url: https://boards.greenhouse.io/gong
     archetype: Enterprise
 
-  # European
+  - name: LivePerson
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/liveperson
+    archetype: Enterprise
+
+  - name: Ada
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/ada
+    archetype: Enterprise
+
+  - name: LinkedIn
+    platform: lever
+    careers_url: https://api.lever.co/v0/postings/linkedin
+    archetype: Enterprise
+
+  # ── European / Global ──────────────────────────────────────
   - name: Factorial
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/factorial
@@ -138,14 +299,10 @@ companies:
     careers_url: https://boards.greenhouse.io/attio
     archetype: European
 
-  # Pakistan / Local
+  # ── Pakistan / MENA ────────────────────────────────────────
   - name: Motive
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/motive
-
-  - name: Arbisoft
-    platform: lever
-    careers_url: https://api.lever.co/v0/postings/arbisoft
 
   - name: Confiz
     platform: greenhouse
@@ -158,15 +315,3 @@ companies:
   - name: Careem
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/careem
-
-  - name: Dubizzle Labs
-    platform: lever
-    careers_url: https://api.lever.co/v0/postings/dubizzlelabs
-
-  - name: Retailo
-    platform: lever
-    careers_url: https://api.lever.co/v0/postings/retailo
-
-  - name: Systems Ltd
-    platform: workable
-    careers_url: https://apply.workable.com/systems

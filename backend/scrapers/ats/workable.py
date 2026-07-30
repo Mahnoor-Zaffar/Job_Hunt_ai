@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from typing import Any
@@ -8,30 +10,45 @@ from backend.scrapers.models.models import RawJob
 
 logger = logging.getLogger("job_hunting.ats.workable")
 
+_WIDGET_API = "https://apply.workable.com/api/v1/widget/accounts"
+
 
 class WorkableAdapter(BaseATSAdapter):
     """Adapter for Workable ATS public job board.
 
-    Workable hosts each company's careers page at::
-
-        https://apply.workable.com/{company}
-
-    The embedded data is typically available via the page HTML
-    (JSON-LD or inline script) or a companion API.
-
-    Fallback: scrape the HTML page and parse JSON-LD structured data.
+    Uses the widget API at ``/api/v1/widget/accounts/{slug}`` which returns
+    a JSON payload with a ``jobs`` array.  Falls back to JSON-LD / inline
+    ``window.__INITIAL_STATE__`` extraction from the HTML page when the
+    widget API is unavailable.
     """
 
     platform = "workable"
 
     async def fetch(self, company: CompanyConfig) -> list[dict[str, Any]]:
-        url = company.careers_url.rstrip("/")
+        slug = _extract_slug(company.careers_url)
+        if not slug:
+            logger.warning("Cannot determine Workable slug from URL: %s", company.careers_url)
+            return []
+
+        widget_url = f"{_WIDGET_API}/{slug}"
+        try:
+            data: dict[str, Any] = await self.http.get_json(widget_url)
+            jobs: list[dict[str, Any]] = data.get("jobs", [])
+            if jobs:
+                return jobs
+        except Exception:
+            logger.debug("Widget API unavailable for %s, trying HTML fallback", company.name)
+
+        return await self._html_fetch(company, slug)
+
+    async def _html_fetch(self, company: CompanyConfig, slug: str) -> list[dict[str, Any]]:
+        url = f"https://apply.workable.com/{slug}/"
         try:
             html = await self.http.get(url)
-            return self._extract_json_ld(html, company)
         except Exception:
-            logger.exception("Failed to fetch Workable jobs for %s", company.name)
+            logger.exception("Failed to fetch Workable HTML for %s", company.name)
             return []
+        return self._extract_json_ld(html)
 
     async def parse(
         self,
@@ -48,7 +65,8 @@ class WorkableAdapter(BaseATSAdapter):
                 logger.exception("Failed to parse Workable job for %s", company.name)
         return result
 
-    def _extract_json_ld(self, html: str, company: CompanyConfig) -> list[dict[str, Any]]:
+    @staticmethod
+    def _extract_json_ld(html: str) -> list[dict[str, Any]]:
         import json as json_mod
         import re
         from html import unescape
@@ -57,82 +75,47 @@ class WorkableAdapter(BaseATSAdapter):
             r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
             re.DOTALL,
         )
-        matches = pattern.findall(html)
-        for match in matches:
+        for match in pattern.findall(html):
             try:
                 data = json_mod.loads(unescape(match))
                 if isinstance(data, list):
-                    items = [
-                        d for d in data if isinstance(d, dict) and d.get("@type") == "JobPosting"
-                    ]
+                    items = [d for d in data if isinstance(d, dict) and d.get("@type") == "JobPosting"]
                     if items:
                         return items
                 elif isinstance(data, dict) and data.get("@type") == "JobPosting":
                     return [data]
             except json_mod.JSONDecodeError:
                 continue
-
-        return self._fallback_parse(html)
-
-    def _fallback_parse(self, html: str) -> list[dict[str, Any]]:
-        import json as json_mod
-        import re
-
-        pattern = re.compile(r"window\.__INITIAL_STATE__\s*=\s*({.*?});", re.DOTALL)
-        match = pattern.search(html)
-        if match:
-            try:
-                data = json_mod.loads(match.group(1))
-                jobs = data.get("jobs", []) or []
-                return [j for j in jobs if isinstance(j, dict)]
-            except json_mod.JSONDecodeError:
-                pass
-        return []
+        return _fallback_initial_state(html)
 
     def _parse_item(self, item: dict[str, Any], company: CompanyConfig) -> RawJob | None:
         title = (item.get("title") or "").strip()
         if not title:
             return None
 
-        job_id = str(item.get("id") or item.get("identifier", {}).get("value", ""))
-        location = item.get("jobLocation", {}) or {}
-        if isinstance(location, dict):
-            address = location.get("address", {}) or {}
-            locality = address.get("addressLocality", "") or location.get("name", "")
-            country_name = address.get("addressCountry", "")
-            location_str = ", ".join(p for p in [locality, country_name] if p) or "Remote"
-        else:
-            location_str = str(location) if location else "Remote"
+        job_id = str(item.get("id") or item.get("shortcode", ""))
+        location_str = _extract_location(item)
+        apply_url = (item.get("url") or item.get("application_url") or "").strip()
+        department = item.get("department")
 
-        apply_url = (item.get("url") or item.get("sameAs") or "").strip()
-        posted_str = item.get("datePosted", "")
+        posted_str = item.get("published", item.get("created_at", ""))
         posted_at = _parse_date(posted_str)
 
-        description = (item.get("description") or "").strip()
-        employment_type = item.get("employmentType")
-        hiring_organization = item.get("hiringOrganization", {}) or {}
-        org_name = (
-            hiring_organization.get("name", company.name)
-            if isinstance(hiring_organization, dict)
-            else company.name
-        )
+        description = (item.get("description") or item.get("full_description") or "").strip()
+        employment_type = item.get("employment_type", item.get("type"))
 
-        salary_info = item.get("baseSalary", {}) or {}
-        salary_min = None
-        salary_max = None
-        salary_currency = None
-        if isinstance(salary_info, dict):
-            value_obj = salary_info.get("value", {})
-            if isinstance(value_obj, dict):
-                raw_min = value_obj.get("minValue")
-                raw_max = value_obj.get("maxValue")
-                salary_min = float(raw_min) if isinstance(raw_min, (int, float, str)) else None
-                salary_max = float(raw_max) if isinstance(raw_max, (int, float, str)) else None
-            salary_currency = salary_info.get("currency", None)
+        salary_min: float | None = None
+        salary_max: float | None = None
+        salary_currency: str | None = None
+        salary_raw = item.get("salary_range") or {}
+        if isinstance(salary_raw, dict):
+            salary_min = _to_float(salary_raw.get("min"))
+            salary_max = _to_float(salary_raw.get("max"))
+            salary_currency = salary_raw.get("currency")
 
         return RawJob(
             title=title,
-            company=org_name or company.name,
+            company=company.name,
             company_url=company.careers_url,
             location=location_str,
             description=description,
@@ -144,10 +127,45 @@ class WorkableAdapter(BaseATSAdapter):
             salary_max=salary_max,
             currency=salary_currency,
             employment_type=employment_type,
+            experience_level=department,
             posted_at=posted_at,
             is_remote=_is_remote(location_str),
             remote_type="remote" if _is_remote(location_str) else "onsite",
         )
+
+
+def _extract_slug(careers_url: str) -> str | None:
+    url = careers_url.rstrip("/")
+    if "apply.workable.com" in url:
+        parts = url.strip("/").split("/")
+        for part in parts:
+            if "apply.workable.com" in part:
+                idx = parts.index(part) + 1
+                if idx < len(parts):
+                    return parts[idx]
+        return None
+    return url.strip("/").split("/")[-1] or None
+
+
+def _extract_location(item: dict[str, Any]) -> str:
+    loc = item.get("location") or {}
+    if isinstance(loc, dict):
+        parts = []
+        city = loc.get("city", "")
+        region = loc.get("region", "")
+        country = loc.get("country", "")
+        if city:
+            parts.append(city)
+        if region and region != city:
+            parts.append(region)
+        if country:
+            parts.append(country)
+        return ", ".join(parts) if parts else "Remote"
+    if isinstance(loc, str) and loc.strip():
+        return loc.strip()
+    if item.get("workplace") or item.get("remote"):
+        return "Remote"
+    return "Remote"
 
 
 def _parse_date(value: str) -> datetime | None:
@@ -165,6 +183,31 @@ def _parse_date(value: str) -> datetime | None:
         except ValueError:
             continue
     return None
+
+
+def _to_float(val: Any) -> float | None:
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _fallback_initial_state(html: str) -> list[dict[str, Any]]:
+    import json as json_mod
+    import re
+
+    pattern = re.compile(r"window\.__INITIAL_STATE__\s*=\s*({.*?});", re.DOTALL)
+    match = pattern.search(html)
+    if match:
+        try:
+            data = json_mod.loads(match.group(1))
+            jobs = data.get("jobs", []) or []
+            return [j for j in jobs if isinstance(j, dict)]
+        except json_mod.JSONDecodeError:
+            pass
+    return []
 
 
 def _is_remote(location: str) -> bool:
