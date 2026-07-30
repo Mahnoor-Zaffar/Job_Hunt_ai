@@ -105,11 +105,6 @@ companies:
     careers_url: https://boards.greenhouse.io/stripe
     archetype: Remote_Friendly
 
-  - name: Cloudflare
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/cloudflare
-    archetype: Remote_Friendly
-
   - name: Spotify
     platform: lever
     careers_url: https://api.lever.co/v0/postings/spotify
@@ -135,24 +130,9 @@ companies:
     careers_url: https://boards.greenhouse.io/mozilla
     archetype: Remote_Friendly
 
-  - name: Airbnb
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/airbnb
-    archetype: Remote_Friendly
-
   - name: HubSpot
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/hubspot
-    archetype: Remote_Friendly
-
-  - name: Figma
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/figma
-    archetype: Remote_Friendly
-
-  - name: Datadog
-    platform: greenhouse
-    careers_url: https://boards.greenhouse.io/datadog
     archetype: Remote_Friendly
 
   - name: Webflow
@@ -315,3 +295,219 @@ companies:
   - name: Careem
     platform: greenhouse
     careers_url: https://boards.greenhouse.io/careem
+
+  # ── More Remote-First / Remote-Friendly ─────────────────────
+  - name: DoorDash
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/doordash
+    archetype: Remote_Friendly
+
+  - name: Lyft
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/lyft
+    archetype: Remote_Friendly
+
+  - name: Pinterest
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/pinterest
+    archetype: Remote_Friendly
+
+  - name: Snap
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/snapchat
+    archetype: Remote_Friendly
+
+  - name: Uber
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/uber
+    archetype: Remote_Friendly
+
+  - name: Snowflake
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/snowflake
+    archetype: Remote_Friendly
+
+  - name: Confluent
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/confluent
+    archetype: Remote_Friendly
+
+  - name: HashiCorp
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/hashicorp
+    archetype: Remote_Friendly
+
+  - name: MongoDB
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/mongodb
+    archetype: Remote_Friendly
+
+  - name: Roblox
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/roblox
+    archetype: Remote_Friendly
+
+  - name: Coinbase
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/coinbase
+    archetype: Remote_Friendly
+
+  - name: Robinhood
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/robinhood
+    archetype: Remote_Friendly
+
+  - name: Block
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/block
+    archetype: Remote_Friendly
+
+  - name: Affirm
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/affirm
+    archetype: Remote_Friendly
+
+  - name: Chime
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/chime
+    archetype: Remote_Friendly
+
+  - name: Rippling
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/rippling
+    archetype: Remote_Friendly
+
+  - name: Deel
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/deel
+    archetype: Remote_Friendly
+
+  - name: Brex
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/brex
+    archetype: Remote_Friendly
+
+  - name: Mercury
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/mercury
+    archetype: Remote_Friendly
+
+  - name: Grammarly
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/grammarly
+    archetype: Remote_Friendly
+
+  - name: Calendly
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/calendly
+    archetype: Remote_Friendly
+
+  - name: Miro
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/miro
+    archetype: Remote_Friendly
+
+  - name: Atlassian
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/atlassian
+    archetype: Remote_Friendly
+
+  - name: Okta
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/okta
+    archetype: Remote_Friendly
+
+  - name: Splunk
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/splunk
+    archetype: Remote_Friendly
+
+  - name: DigitalOcean
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/digitalocean
+    archetype: Remote_Friendly
+
+  - name: CircleCI
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/circleci
+    archetype: Remote_Friendly
+
+  - name: Snyk
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/snyk
+    archetype: Remote_Friendly
+
+  - name: 1Password
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/1password
+    archetype: Remote_Friendly
+
+  - name: Benchling
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/benchling
+    archetype: Remote_Friendly
+
+  - name: Carta
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/carta
+    archetype: Remote_Friendly
+
+  - name: Linear
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/linear
+    archetype: Remote_Friendly
+
+  - name: Vanta
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/vanta
+    archetype: Remote_Friendly
+
+  - name: Notion
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/notion
+    archetype: Remote_Friendly
+
+  - name: Figma
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/figma
+    archetype: Remote_Friendly
+
+  - name: Lattice
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/lattice
+    archetype: Remote_Friendly
+
+  - name: Front
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/frontapp
+    archetype: Remote_Friendly
+
+  - name: Asana
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/asana
+    archetype: Remote_Friendly
+
+  - name: Etsy
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/etsy
+    archetype: Remote_Friendly
+
+  - name: Patreon
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/patreon
+    archetype: Remote_Friendly
+
+  - name: Strava
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/strava
+    archetype: Remote_Friendly
+
+  - name: Glassdoor
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/glassdoor
+    archetype: Remote_Friendly
+
+  - name: Flexport
+    platform: greenhouse
+    careers_url: https://boards.greenhouse.io/flexport
+    archetype: Remote_Friendly
