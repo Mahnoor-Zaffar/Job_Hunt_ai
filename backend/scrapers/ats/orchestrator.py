@@ -50,6 +50,7 @@ class ATSOrchestrator(BaseScraper):
             groups.setdefault(c.platform, []).append(c)
 
         results: list[tuple[CompanyConfig, list[dict[str, Any]]]] = []
+        _delay = 0.3
 
         for platform, entries in groups.items():
             adapter_cls = _ADAPTER_REGISTRY.get(platform)
@@ -59,16 +60,13 @@ class ATSOrchestrator(BaseScraper):
 
             adapter = adapter_cls(http_client=self.http)
 
-            tasks = []
             for entry in entries:
-                tasks.append(self._fetch_one(adapter, entry))
-
-            batch = await asyncio.gather(*tasks, return_exceptions=True)
-            for item in batch:
-                if isinstance(item, BaseException):
-                    logger.error("ATS fetch failed: %s", item)
-                else:
-                    results.append(item)
+                try:
+                    result = await self._fetch_one(adapter, entry)
+                    results.append(result)
+                except Exception as exc:
+                    logger.error("ATS fetch failed for %s: %s", entry.name, exc)
+                await asyncio.sleep(_delay)
 
             await adapter.close()
 
@@ -91,16 +89,12 @@ class ATSOrchestrator(BaseScraper):
 
             adapter = adapter_cls(http_client=self.http)
 
-            tasks = []
             for company, data in entries:
-                tasks.append(self._parse_one(adapter, data, company))
-
-            batch = await asyncio.gather(*tasks, return_exceptions=True)
-            for item in batch:
-                if isinstance(item, BaseException):
-                    logger.error("ATS parse failed: %s", item)
-                else:
-                    all_jobs.extend(item)
+                try:
+                    parsed = await adapter.parse(data, company)
+                    all_jobs.extend(parsed)
+                except Exception as exc:
+                    logger.error("ATS parse failed for %s: %s", company.name, exc)
 
             await adapter.close()
 

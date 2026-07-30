@@ -59,6 +59,9 @@ def _title_matches(title_lower: str, pattern: str) -> bool:
         if variant in norm_title:
             return True
 
+    words = norm_pattern.split()
+    if len(words) >= 2:
+        return all(w in norm_title.split() for w in words)
     return False
 
 
