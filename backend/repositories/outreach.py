@@ -22,3 +22,9 @@ class OutreachRepository(BaseRepository[Outreach]):
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def get_by_application(self, application_id: uuid.UUID) -> Outreach | None:
+        result = await self.session.execute(
+            select(Outreach).where(Outreach.application_id == application_id).limit(1)
+        )
+        return result.scalar_one_or_none()

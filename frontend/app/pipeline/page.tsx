@@ -1,3 +1,6 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui";
 
 const STAGE_LABELS: Record<string, { label: string; color: string }> = {
@@ -20,25 +23,141 @@ const PIPELINE_DISPLAY = [
   "queued", "draft", "submitted", "under_review", "interview", "offer",
 ];
 
-async function getPipeline() {
-  try {
-    const res = await fetch("http://localhost:8000/api/v1/pipeline?user_id=00000000-0000-0000-0000-000000000001", { next: { revalidate: 15 } });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch { return null; }
+const USER_ID = "00000000-0000-0000-0000-000000000001";
+
+interface StageInfo {
+  stage: string;
+  count: number;
 }
 
-export default async function PipelinePage() {
-  const data = await getPipeline();
+interface PipelineJob {
+  app_id: string;
+  job_id: string;
+  stage: string;
+  match_score: number | null;
+  applied_at: string | null;
+  interview_date: string | null;
+  follow_up_at: string | null;
+  notes: string | null;
+  job: { title?: string; company?: string; location?: string };
+}
+
+export default function PipelinePage() {
+  const [stages, setStages] = useState<StageInfo[]>([]);
+  const [total, setTotal] = useState(0);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<PipelineJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setSelectedStage(params.get("stage"));
+  }, []);
+
+  const fetchOverview = useCallback(async () => {
+    const res = await fetch(`http://localhost:8000/api/v1/pipeline?user_id=${USER_ID}`);
+    if (res.ok) {
+      const data = await res.json();
+      setStages(data.stages ?? []);
+      setTotal(data.total ?? 0);
+    }
+  }, []);
+
+  const fetchJobs = useCallback(async (stage: string | null) => {
+    setLoading(true);
+    let url = `http://localhost:8000/api/v1/pipeline/jobs?user_id=${USER_ID}`;
+    if (stage) url += `&stage=${stage}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      setJobs(await res.json());
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+  useEffect(() => { fetchJobs(selectedStage); }, [selectedStage, fetchJobs]);
+
   const stageMap: Record<string, number> = {};
-  data?.stages?.forEach((s: { stage: string; count: number }) => { stageMap[s.stage] = s.count; });
+  stages.forEach((s) => { stageMap[s.stage] = s.count; });
+
+  const handleAdvance = async (appId: string, autoSubmit = false) => {
+    setActionLoading(appId);
+    const job = jobs.find((j) => j.app_id === appId);
+    if (!job) return;
+    const url = `http://localhost:8000/api/v1/pipeline/jobs/${job.job_id}/advance?user_id=${USER_ID}&auto_submit=${autoSubmit}`;
+    await fetch(url, { method: "POST" });
+    await fetchJobs(selectedStage);
+    await fetchOverview();
+    setActionLoading(null);
+  };
+
+  const handleGenerateOutreach = async (jobId: string) => {
+    setActionLoading(jobId);
+    await fetch(`http://localhost:8000/api/v1/outreach/generate?job_id=${jobId}&user_id=${USER_ID}`, {
+      method: "POST",
+    });
+    setActionLoading(null);
+    window.open("/outreach", "_blank");
+  };
+
+  const handleAutoApply = async (appId: string) => {
+    setActionLoading(appId);
+    await fetch(`http://localhost:8000/api/v1/applications/${appId}/auto-apply?user_id=${USER_ID}`, {
+      method: "POST",
+    });
+    setActionLoading(null);
+  };
+
+  const canAdvance = (stage: string) => {
+    return !["offer", "rejected", "withdrawn"].includes(stage);
+  };
+
+  const stageActions = (app: PipelineJob) => {
+    const stage = app.stage;
+    const isLast = stage === "offer" || stage === "rejected" || stage === "withdrawn";
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {canAdvance(stage) && (
+          <button
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 disabled:opacity-50"
+            disabled={actionLoading === app.app_id}
+            onClick={() => handleAdvance(app.app_id, stage === "queued")}
+          >
+            {actionLoading === app.app_id ? "..." : "Advance →"}
+          </button>
+        )}
+        {isLast && (
+          <span className="text-xs text-muted-foreground italic">Terminal stage</span>
+        )}
+        {stage === "submitted" && (
+          <button
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors border border-input bg-secondary hover:bg-secondary/80 px-3 py-1.5 disabled:opacity-50"
+            disabled={actionLoading === app.job_id}
+            onClick={() => handleAutoApply(app.app_id)}
+          >
+            Auto Apply
+          </button>
+        )}
+        {stage === "outreach_ready" && (
+          <button
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors border border-input bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 disabled:opacity-50"
+            disabled={actionLoading === app.job_id}
+            onClick={() => handleGenerateOutreach(app.job_id)}
+          >
+            Generate Outreach
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Career Pipeline</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {data ? `${data.total} jobs in pipeline` : "Loading..."}
+          {total} jobs in pipeline
         </p>
       </div>
 
@@ -47,12 +166,14 @@ export default async function PipelinePage() {
           const info = STAGE_LABELS[stage] || { label: stage, color: "bg-secondary text-muted-foreground" };
           const count = stageMap[stage] || 0;
           return (
-            <a key={stage} href={`/pipeline?stage=${stage}`}>
-              <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${count > 0 ? "border-l-2" : "opacity-60"}`}>
-                <p className={`text-xs font-medium mb-1 ${STAGE_LABELS[stage]?.color.split(" ")[0] || "text-muted-foreground"}`}>{info.label}</p>
+            <button key={stage} onClick={() => setSelectedStage(stage)}
+              className="text-left"
+            >
+              <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${count > 0 ? "border-l-2" : "opacity-60"} ${selectedStage === stage ? "ring-2 ring-primary" : ""}`}>
+                <p className={`text-xs font-medium mb-1 ${STAGE_LABELS[stage]?.color?.split(" ")[0] || "text-muted-foreground"}`}>{info.label}</p>
                 <p className="text-2xl font-semibold tracking-tight">{count}</p>
               </div>
-            </a>
+            </button>
           );
         })}
       </div>
@@ -61,27 +182,78 @@ export default async function PipelinePage() {
           const info = STAGE_LABELS[stage] || { label: stage, color: "bg-secondary text-muted-foreground" };
           const count = stageMap[stage] || 0;
           return (
-            <a key={stage} href={`/pipeline?stage=${stage}`}>
-              <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${count > 0 ? "border-l-2" : "opacity-60"}`}>
-                <p className={`text-xs font-medium mb-1 ${STAGE_LABELS[stage]?.color.split(" ")[0] || "text-muted-foreground"}`}>{info.label}</p>
+            <button key={stage} onClick={() => setSelectedStage(stage)}
+              className="text-left"
+            >
+              <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${count > 0 ? "border-l-2" : "opacity-60"} ${selectedStage === stage ? "ring-2 ring-primary" : ""}`}>
+                <p className={`text-xs font-medium mb-1 ${STAGE_LABELS[stage]?.color?.split(" ")[0] || "text-muted-foreground"}`}>{info.label}</p>
                 <p className="text-2xl font-semibold tracking-tight">{count}</p>
               </div>
-            </a>
+            </button>
           );
         })}
-        <a href="/pipeline?stage=rejected">
-          <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${(stageMap.rejected || 0) > 0 ? "border-l-2 border-l-rose-500" : "opacity-60"}`}>
+        <button onClick={() => setSelectedStage("rejected")}
+          className="text-left"
+        >
+          <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${stageMap.rejected > 0 ? "border-l-2 border-l-rose-500" : "opacity-60"} ${selectedStage === "rejected" ? "ring-2 ring-primary" : ""}`}>
             <p className="text-xs font-medium text-rose-500 mb-1">Rejected</p>
             <p className="text-2xl font-semibold tracking-tight">{stageMap.rejected || 0}</p>
           </div>
-        </a>
-        <a href="/pipeline?stage=withdrawn">
-          <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${(stageMap.withdrawn || 0) > 0 ? "border-l-2" : "opacity-60"}`}>
+        </button>
+        <button onClick={() => setSelectedStage("withdrawn")}
+          className="text-left"
+        >
+          <div className={`rounded-lg border bg-card p-4 text-center hover:bg-secondary/30 transition-colors ${stageMap.withdrawn > 0 ? "border-l-2" : "opacity-60"} ${selectedStage === "withdrawn" ? "ring-2 ring-primary" : ""}`}>
             <p className="text-xs font-medium text-muted-foreground mb-1">Withdrawn</p>
             <p className="text-2xl font-semibold tracking-tight">{stageMap.withdrawn || 0}</p>
           </div>
-        </a>
+        </button>
       </div>
+
+      {selectedStage && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-medium">
+              {STAGE_LABELS[selectedStage]?.label || selectedStage}
+            </h2>
+            <button onClick={() => setSelectedStage(null)} className="text-xs text-muted-foreground hover:text-foreground">
+              Clear filter
+            </button>
+          </div>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading jobs...</p>
+          ) : jobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No jobs in this stage.</p>
+          ) : (
+            <div className="space-y-3">
+              {jobs.map((app) => (
+                <Card key={app.app_id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium">{app.job.title || "Unknown"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {app.job.company || ""}{app.job.company && app.job.location ? " · " : ""}{app.job.location || ""}
+                      </p>
+                    </div>
+                    {app.match_score != null && (
+                      <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium">{Math.round(app.match_score)}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${STAGE_LABELS[app.stage]?.color || ""}`}>
+                      {STAGE_LABELS[app.stage]?.label || app.stage}
+                    </span>
+                    {app.applied_at && <span className="text-xs text-muted-foreground">Applied {new Date(app.applied_at).toLocaleDateString()}</span>}
+                    {app.follow_up_at && <span className="text-xs text-amber-600">Follow-up {new Date(app.follow_up_at).toLocaleDateString()}</span>}
+                    {app.interview_date && <span className="text-xs text-emerald-600">Interview {new Date(app.interview_date).toLocaleDateString()}</span>}
+                  </div>
+                  {stageActions(app)}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

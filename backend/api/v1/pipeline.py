@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.session import get_db
 from backend.models.application import Application
 from backend.repositories.application import ApplicationRepository
+from backend.services.outreach.outreach_service import OutreachService
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -47,9 +48,9 @@ def _pipeline_stage_order(stage: str) -> int:
     return PIPELINE_ORDER.index(stage) if stage in PIPELINE_ORDER else 999
 
 
-def _stage_side_effects(app: Application, stage: str) -> list[str]:
+def _stage_side_effects(app: Application, stage: str, db: AsyncSession | None = None) -> list[str]:
     effects: list[str] = []
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     if stage == "submitted" and not app.applied_at:
         app.applied_at = now
@@ -63,6 +64,19 @@ def _stage_side_effects(app: Application, stage: str) -> list[str]:
         effects.append("Interview date auto-scheduled (14 days out)")
     elif stage == "offer":
         effects.append("Offer stage reached — prepare negotiation")
+
+    if stage == "outreach_ready" and db is not None and app.job_id:
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            from backend.repositories.outreach import OutreachRepository
+            or_task = loop.create_task(
+                OutreachService(OutreachRepository(db)).auto_generate_for_application(app, app.user_id)
+            )
+            or_task.add_done_callback(lambda t: t.exception() or None)
+            effects.append("Outreach email generation queued")
+        except Exception:
+            effects.append("Outreach generation skipped (background task failed)")
 
     return effects
 
@@ -96,12 +110,26 @@ async def get_pipeline_jobs(
     if stage and stage not in PIPELINE_STAGES:
         raise HTTPException(status_code=422, detail=f"Invalid pipeline stage: {stage}")
 
+    from sqlalchemy import select
+
+    from backend.models.job import Job
+
     repo = ApplicationRepository(db)
     apps = await repo.get_by_user(user_id, skip=0, limit=500)
     if stage:
         apps = [a for a in apps if a.status == stage]
     apps.sort(key=lambda a: a.updated_at or a.created_at, reverse=True)
     paged = apps[offset: offset + limit]
+
+    job_ids = [a.job_id for a in paged if a.job_id]
+    jobs_map: dict[str, dict] = {}
+    if job_ids:
+        result = await db.execute(
+            select(Job.id, Job.title, Job.company, Job.location).where(Job.id.in_(job_ids))
+        )
+        for row in result.all():
+            jobs_map[str(row.id)] = {"title": row.title, "company": row.company, "location": row.location}
+
     return [
         {
             "app_id": str(a.id),
@@ -112,6 +140,7 @@ async def get_pipeline_jobs(
             "interview_date": str(a.interview_date) if a.interview_date else None,
             "follow_up_at": str(a.follow_up_at) if a.follow_up_at else None,
             "notes": a.notes,
+            "job": jobs_map.get(str(a.job_id), {}),
         }
         for a in paged
     ]
@@ -138,7 +167,7 @@ async def advance_pipeline_stage(
     next_stage = PIPELINE_ORDER[next_idx]
     app.status = next_stage
 
-    effects = _stage_side_effects(app, next_stage)
+    effects = _stage_side_effects(app, next_stage, db)
 
     if auto_submit and next_stage == "submitted":
         effects.append("Marked for auto-apply (run from Applications page)")
@@ -171,7 +200,7 @@ async def set_pipeline_stage(
     else:
         app.status = body.stage
 
-    effects = _stage_side_effects(app, body.stage)
+    effects = _stage_side_effects(app, body.stage, db)
 
     await db.flush()
     return {

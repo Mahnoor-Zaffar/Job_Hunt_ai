@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from backend.models.career_profile import CareerProfile
 from backend.models.job import Job
 from backend.models.outreach import Outreach
 from backend.notifications.email import EmailNotifier
 from backend.repositories.outreach import OutreachRepository
+
+if TYPE_CHECKING:
+    from backend.models.application import Application
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +21,43 @@ class OutreachService:
     def __init__(self, repo: OutreachRepository) -> None:
         self._repo = repo
         self._notifier = EmailNotifier()
+
+    @classmethod
+    async def auto_generate_for_application(
+        cls, app: Application, user_id: uuid.UUID
+    ) -> None:
+        from sqlalchemy import select
+
+        from backend.database.session import get_session_factory
+        from backend.models.career_profile import CareerProfile
+        from backend.models.job import Job
+        from backend.repositories.outreach import OutreachRepository
+
+        factory = get_session_factory()
+        async with factory() as db:
+            try:
+                outreach_repo = OutreachRepository(db)
+                svc = cls(outreach_repo)
+                job = await db.get(Job, app.job_id)
+                if not job:
+                    await db.rollback()
+                    return
+                result = await db.execute(
+                    select(CareerProfile).where(CareerProfile.user_id == user_id)
+                )
+                profile = result.scalar_one_or_none()
+                if not profile:
+                    await db.rollback()
+                    return
+                existing = await outreach_repo.get_by_application(app.id)
+                if existing:
+                    await db.rollback()
+                    return
+                await svc.generate_email(job, profile, user_id, app.id)
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                raise
 
     async def generate_email(
         self,
