@@ -9,6 +9,8 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "◧" },
   { href: "/jobs", label: "All Jobs", icon: "⊞" },
   { href: "/pipeline", label: "Pipeline", icon: "⊣" },
+  { href: "/analytics", label: "Analytics", icon: "◰" },
+  { href: "/outreach", label: "Outreach", icon: "✉" },
   { href: "/remote-jobs", label: "Remote Jobs", icon: "◎" },
   { href: "/startups", label: "Startups", icon: "⟐" },
   { href: "/it-companies", label: "IT Companies", icon: "⊞" },
@@ -16,7 +18,6 @@ const NAV_ITEMS = [
   { href: "/alerts", label: "Alerts", icon: "⏢" },
   { href: "/applications", label: "Applications", icon: "⊟" },
   { href: "/resume", label: "Resume", icon: "⊠" },
-  { href: "/classify", label: "Classifier", icon: "◎" },
   { href: "/settings", label: "Settings", icon: "⊡" },
 ];
 

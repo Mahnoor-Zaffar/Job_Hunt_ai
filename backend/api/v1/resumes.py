@@ -1,4 +1,4 @@
-"""Resume API — upload, list, versions, delete, set primary, parse."""
+"""Resume API — upload, list, versions, delete, set primary, parse, tailor."""
 
 import uuid
 from datetime import datetime
@@ -11,8 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.ai.intelligence.resume import ResumeIntelligence
 from backend.database.session import get_db
 from backend.models.resume import Resume
+from backend.repositories.career_profile import CareerProfileRepository
+from backend.repositories.job import JobRepository
 from backend.repositories.resume import ResumeRepository, ResumeVersionRepository
 from backend.schemas.base import BaseSchema
+from backend.services.resume_tailoring import ResumeTailoringService
 from backend.utils.validation import validate_file
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
@@ -193,6 +196,26 @@ async def parse_resume(file: UploadFile = File(...)) -> ParsedResumeResponse:
         languages=parsed.languages,
         total_experience_years=parsed.total_experience_years,
     )
+
+
+@router.post("/tailor")
+async def tailor_resume(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Query(...),
+):
+    profile_repo = CareerProfileRepository(db)
+    profile = await profile_repo.get_by_user(user_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Create a career profile first")
+
+    job_repo = JobRepository(db)
+    job = await job_repo.get_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    svc = ResumeTailoringService()
+    return svc.tailor(job, profile)
 
 
 async def _extract_text(content: bytes, filename: str) -> str:

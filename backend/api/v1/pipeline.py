@@ -122,6 +122,7 @@ async def advance_pipeline_stage(
     job_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Query(..., description="User ID"),
+    auto_submit: bool = Query(False, description="Trigger auto-apply when advancing to submitted"),
 ):
     repo = ApplicationRepository(db)
     app = await repo.get_by_job_and_user(job_id, user_id)
@@ -138,6 +139,10 @@ async def advance_pipeline_stage(
     app.status = next_stage
 
     effects = _stage_side_effects(app, next_stage)
+
+    if auto_submit and next_stage == "submitted":
+        effects.append("Marked for auto-apply (run from Applications page)")
+        app.notes = (app.notes or "") + "\n[Auto-apply queued]"
 
     await db.flush()
     return {

@@ -54,7 +54,9 @@ export interface DashboardStats {
     last_scrape: string | null;
   };
   jobs_by_source: { source: string; count: number }[];
-  applications_by_status: { source: string; count: number }[];
+  applications_by_status: { status: string; count: number }[];
+  top_technologies: { name: string; count: number }[];
+  hiring_trends?: { month: string; count: number }[];
 }
 
 export interface NotificationItem {
@@ -256,5 +258,13 @@ export const api = {
         pipeline_stage_counts: Record<string, number>;
         missing_skills: string[];
       }>(`/recommendations/daily-actions?user_id=${USER_ID}`),
+  },
+  outreach: {
+    generate: (jobId: string) =>
+      fetchJSON<any>(`/outreach/generate?job_id=${jobId}&user_id=${USER_ID}`, { method: "POST" }),
+    send: (id: string) =>
+      fetchJSON<any>(`/outreach/${id}/send`, { method: "POST" }),
+    list: () =>
+      fetchJSON<any[]>(`/outreach?user_id=${USER_ID}`),
   },
 };
