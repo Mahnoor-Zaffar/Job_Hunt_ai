@@ -4,11 +4,7 @@ from backend.models.career_profile import CareerProfile
 from backend.models.job import Job
 from backend.services.ranking.models import RankedJob
 from backend.services.ranking.scorers import REGISTRY
-from backend.services.ranking.weights import (
-    load_actions,
-    load_labels,
-    load_max_confidence_threshold,
-)
+from backend.services.ranking.weights import load_actions, load_confidence_thresholds, load_labels
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +16,7 @@ class RankingEngine:
 
         labels = load_labels()
         actions = load_actions()
-        max_conf_threshold = load_max_confidence_threshold()
+        conf_thresholds = load_confidence_thresholds()
 
         ranked: list[RankedJob] = []
         for job in jobs:
@@ -41,7 +37,7 @@ class RankingEngine:
             label = self._assign_label(composite, labels)
             action = actions.get(label, "Skip")
 
-            confidence = self._assign_confidence(composite, max_conf_threshold)
+            confidence = self._assign_confidence(composite, conf_thresholds)
 
             ranked.append(RankedJob(
                 job=job,
@@ -64,9 +60,9 @@ class RankingEngine:
                 best_threshold = threshold
         return best
 
-    def _assign_confidence(self, score: float, max_conf_threshold: int) -> str:
-        if score >= max_conf_threshold:
+    def _assign_confidence(self, score: float, thresholds: dict[str, int]) -> str:
+        if score >= thresholds.get("high", 75):
             return "high"
-        elif score >= 50:
+        elif score >= thresholds.get("medium", 45):
             return "medium"
         return "low"

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from backend.models.career_profile import CareerProfile
 from backend.models.job import Job
@@ -20,7 +20,7 @@ class FreshnessScorer(BaseScorer):
         now = datetime.now(UTC)
         if isinstance(posted, datetime):
             if posted.tzinfo is None:
-                posted = posted.replace(tzinfo=timezone.utc)
+                posted = posted.replace(tzinfo=UTC)
             age = now - posted
         else:
             return FactorScore(name=self.name, score=self.max_score * 0.5, max_score=self.max_score, details={"age_days": None, "reason": "Invalid date type"})

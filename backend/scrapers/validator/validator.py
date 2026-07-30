@@ -23,6 +23,20 @@ class Validator:
         "fingerprint",
     ]
 
+    JUNK_TITLE_PATTERNS: ClassVar[list[str]] = [
+        "i want all the money",
+        "job hunting indecision",
+        "we don't currently have any open roles",
+        "no open roles",
+        "test job",
+        "test posting",
+        "example job",
+        "job does not exist",
+        "placeholder",
+        "open role",
+        "talent pool",
+    ]
+
     def validate(self, job: NormalizedJob) -> ValidationResult:
         errors: list[str] = []
         warnings: list[str] = []
@@ -31,6 +45,7 @@ class Validator:
         self._check_urls(job, errors)
         self._check_salary(job, warnings)
         self._check_lengths(job, errors)
+        self._check_title_quality(job, warnings)
 
         return ValidationResult(
             is_valid=len(errors) == 0,
@@ -70,3 +85,16 @@ class Validator:
             errors.append("Company name exceeds 500 characters")
         if len(job.location) > 500:
             errors.append("Location exceeds 500 characters")
+
+    def _check_title_quality(self, job: NormalizedJob, warnings: list[str]) -> None:
+        title_lower = job.title.lower().strip()
+
+        for pattern in self.JUNK_TITLE_PATTERNS:
+            if pattern in title_lower:
+                warnings.append(f"Title matches junk pattern: '{pattern}'")
+                return
+
+        if job.skills:
+            junk_skills = {"digital nomad", "non tech", "part time", "internship"}
+            if junk_skills & {s.lower() for s in job.skills if isinstance(s, str)}:
+                warnings.append("Title has junk skill tags")

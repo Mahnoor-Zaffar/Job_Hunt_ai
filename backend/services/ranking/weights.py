@@ -30,3 +30,12 @@ def load_actions() -> dict[str, str]:
 def load_max_confidence_threshold() -> int:
     data = _load()
     return data.get("max_confidence_threshold", 90)
+
+
+def load_confidence_thresholds() -> dict[str, int]:
+    data = _load()
+    conf = data.get("confidence", {})
+    return {
+        "high": conf.get("high_threshold", 75),
+        "medium": conf.get("medium_threshold", 45),
+    }

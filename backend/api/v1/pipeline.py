@@ -1,6 +1,7 @@
 """Pipeline API — manage job opportunity stages through the career pipeline."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -46,6 +47,26 @@ def _pipeline_stage_order(stage: str) -> int:
     return PIPELINE_ORDER.index(stage) if stage in PIPELINE_ORDER else 999
 
 
+def _stage_side_effects(app: Application, stage: str) -> list[str]:
+    effects: list[str] = []
+    now = datetime.now(UTC)
+
+    if stage == "submitted" and not app.applied_at:
+        app.applied_at = now
+        app.is_submitted = True
+        effects.append("Applied at auto-set")
+    elif stage == "under_review":
+        app.follow_up_at = now + timedelta(days=7)
+        effects.append("Follow-up set to 7 days")
+    elif stage == "interview" and not app.interview_date:
+        app.interview_date = now + timedelta(days=14)
+        effects.append("Interview date auto-scheduled (14 days out)")
+    elif stage == "offer":
+        effects.append("Offer stage reached — prepare negotiation")
+
+    return effects
+
+
 @router.get("", response_model=PipelineOverview)
 async def get_pipeline_overview(
     db: AsyncSession = Depends(get_db),
@@ -88,6 +109,7 @@ async def get_pipeline_jobs(
             "stage": a.status if a.status in PIPELINE_STAGES else "discovered",
             "match_score": a.match_score,
             "applied_at": str(a.applied_at) if a.applied_at else None,
+            "interview_date": str(a.interview_date) if a.interview_date else None,
             "follow_up_at": str(a.follow_up_at) if a.follow_up_at else None,
             "notes": a.notes,
         }
@@ -114,8 +136,17 @@ async def advance_pipeline_stage(
     next_idx = min(idx + 1, len(PIPELINE_ORDER) - 1)
     next_stage = PIPELINE_ORDER[next_idx]
     app.status = next_stage
+
+    effects = _stage_side_effects(app, next_stage)
+
     await db.flush()
-    return {"app_id": str(app.id), "job_id": str(job_id), "previous_stage": current, "current_stage": next_stage}
+    return {
+        "app_id": str(app.id),
+        "job_id": str(job_id),
+        "previous_stage": current,
+        "current_stage": next_stage,
+        "effects": effects,
+    }
 
 
 @router.post("/jobs/{job_id}/stage")
@@ -134,5 +165,13 @@ async def set_pipeline_stage(
         app = await repo.create(app)
     else:
         app.status = body.stage
-        await db.flush()
-    return {"app_id": str(app.id), "job_id": str(job_id), "current_stage": body.stage}
+
+    effects = _stage_side_effects(app, body.stage)
+
+    await db.flush()
+    return {
+        "app_id": str(app.id),
+        "job_id": str(job_id),
+        "current_stage": body.stage,
+        "effects": effects,
+    }
