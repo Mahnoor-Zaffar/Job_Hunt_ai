@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "◧" },
   { href: "/jobs", label: "All Jobs", icon: "⊞" },
   { href: "/pipeline", label: "Pipeline", icon: "⊣" },
+  { href: "/apply/review", label: "Apply Review", icon: "✎" },
   { href: "/analytics", label: "Analytics", icon: "◰" },
   { href: "/outreach", label: "Outreach", icon: "✉" },
   { href: "/remote-jobs", label: "Remote Jobs", icon: "◎" },

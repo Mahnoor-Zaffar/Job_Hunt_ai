@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.models.base import BaseModel
@@ -16,6 +16,11 @@ class Application(BaseModel):
     status: Mapped[str] = mapped_column(String(30), default="draft", index=True)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime)
     cover_letter: Mapped[str | None] = mapped_column(Text)
+    cover_letter_text: Mapped[str | None] = mapped_column(Text)
+    matched_github_repo: Mapped[str | None] = mapped_column(String(500))
+    before_screenshot: Mapped[str | None] = mapped_column(String(500))
+    after_screenshot: Mapped[str | None] = mapped_column(String(500))
+    is_auto_generated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     notes: Mapped[str | None] = mapped_column(Text)
     match_score: Mapped[float | None] = mapped_column()
     interview_date: Mapped[datetime | None] = mapped_column(DateTime)

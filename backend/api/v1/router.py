@@ -10,6 +10,8 @@ from backend.api.v1.health import router as health_router
 from backend.api.v1.jobs import router as jobs_router
 from backend.api.v1.notifications import router as notifications_router
 from backend.api.v1.observability import router as observability_router
+from backend.api.v1.apply_review import router as apply_router
+from backend.api.v1.github_profile import router as github_profile_router
 from backend.api.v1.outreach import router as outreach_router
 from backend.api.v1.pipeline import router as pipeline_router
 from backend.api.v1.profile import router as profile_router
@@ -34,3 +36,5 @@ api_v1_router.include_router(profile_router, tags=["profile"])
 api_v1_router.include_router(pipeline_router, tags=["pipeline"])
 api_v1_router.include_router(recommendations_router, tags=["recommendations"])
 api_v1_router.include_router(outreach_router, tags=["outreach"])
+api_v1_router.include_router(github_profile_router, tags=["github-profile"])
+api_v1_router.include_router(apply_router, tags=["apply"])

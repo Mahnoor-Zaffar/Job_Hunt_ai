@@ -1,6 +1,7 @@
 from backend.models.application import Application
 from backend.models.base import BaseModel
 from backend.models.company import Company
+from backend.models.github_repo import GitHubRepo
 from backend.models.job import Job
 from backend.models.location import Location
 from backend.models.notification import Notification
